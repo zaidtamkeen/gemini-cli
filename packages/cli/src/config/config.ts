@@ -701,6 +701,7 @@ export async function loadCliConfig(
       settings.tools?.enableMessageBusIntegration ?? false,
     codebaseInvestigatorSettings:
       settings.experimental?.codebaseInvestigatorSettings,
+    adkMode: settings.general?.adkMode ?? false,
     retryFetchErrors: settings.general?.retryFetchErrors ?? false,
   });
 }

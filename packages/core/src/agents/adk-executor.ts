@@ -7,7 +7,7 @@
 import type { IAgentExecutor } from './executor.js';
 import type { AgentDefinition, AgentInputs, OutputObject } from './types.js';
 import { AgentTerminateMode } from './types.js';
-import { LlmAgent, InMemoryRunner, createEvent } from '@google/adk';
+import { LlmAgent, InMemoryRunner } from '@google/adk';
 import type { z } from 'zod';
 import type { Config } from '../config/config.js';
 import type { Part, FunctionDeclaration } from '@google/genai';
@@ -43,6 +43,7 @@ export class AdkToolAdapter extends AdkBaseTool {
 export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
   implements IAgentExecutor
 {
+  private readonly appName: string = 'gemini-cli';
   private readonly definition: AgentDefinition<TOutput>;
   private readonly config: Config;
 
@@ -66,6 +67,7 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
       .getAllTools()
       .map((tool) => new AdkToolAdapter(tool as AnyDeclarativeTool));
 
+    // TODO: handle input schema and output schema
     const adkAgent = new LlmAgent({
       name,
       description,
@@ -81,20 +83,18 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
     const runner = new InMemoryRunner({ agent: adkAgent });
     const sessionId = this.config.getSessionId();
     const userId = os.userInfo().username || randomUUID();
-    const appName = 'gemini-cli';
+    const appName = this.appName + '-' + name;
 
-    const session = await runner.sessionService.createSession({
+    await runner.sessionService.createSession({
       appName,
       userId,
       sessionId,
     });
 
     const content = {
-      role: 'user' as const,
-      parts: [{ text: JSON.stringify(inputs) }],
+      role: 'user',
+      parts: [{ text: JSON.stringify(inputs['objective']) }],
     };
-    const event = createEvent({ content });
-    await runner.sessionService.appendEvent({ session, event });
 
     let finalResult = '';
     const eventStream = await runner.runAsync({
