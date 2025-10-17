@@ -78,6 +78,7 @@ import { ProxyAgent, setGlobalDispatcher } from 'undici';
 
 import { AgentRegistry } from '../agents/registry.js';
 import { SubagentToolWrapper } from '../agents/subagent-tool-wrapper.js';
+import { FinishTool } from '../tools/finish.js';
 
 export enum ApprovalMode {
   DEFAULT = 'default',
@@ -280,6 +281,7 @@ export interface ConfigParameters {
   continueOnFailedApiCall?: boolean;
   retryFetchErrors?: boolean;
   enableShellOutputEfficiency?: boolean;
+  enableFinishTool?: boolean;
 }
 
 export class Config {
@@ -375,6 +377,7 @@ export class Config {
   private readonly continueOnFailedApiCall: boolean;
   private readonly retryFetchErrors: boolean;
   private readonly enableShellOutputEfficiency: boolean;
+  private readonly enableFinishTool: boolean;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -468,9 +471,10 @@ export class Config {
     this.enableMessageBusIntegration =
       params.enableMessageBusIntegration ?? false;
     this.codebaseInvestigatorSettings = params.codebaseInvestigatorSettings;
-    this.continueOnFailedApiCall = params.continueOnFailedApiCall ?? true;
+    this.continueOnFailedApiCall = false; //params.continueOnFailedApiCall ?? true;
     this.enableShellOutputEfficiency =
       params.enableShellOutputEfficiency ?? true;
+    this.enableFinishTool = true;
     this.extensionManagement = params.extensionManagement ?? true;
     this.storage = new Storage(this.targetDir);
     this.enablePromptCompletion = params.enablePromptCompletion ?? false;
@@ -981,6 +985,10 @@ export class Config {
     return this.enableShellOutputEfficiency;
   }
 
+  getEnableFinishTool(): boolean {
+    return this.enableFinishTool;
+  }
+
   getShellExecutionConfig(): ShellExecutionConfig {
     return this.shellExecutionConfig;
   }
@@ -1155,6 +1163,9 @@ export class Config {
     registerCoreTool(WebSearchTool, this);
     if (this.getUseWriteTodos()) {
       registerCoreTool(WriteTodosTool, this);
+    }
+    if (this.getEnableFinishTool()) {
+      registerCoreTool(FinishTool);
     }
 
     // Register Subagents as Tools

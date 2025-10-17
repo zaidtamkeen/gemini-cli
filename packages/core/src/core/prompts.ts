@@ -20,6 +20,7 @@ import { MemoryTool } from '../tools/memoryTool.js';
 import { CodebaseInvestigatorAgent } from '../agents/codebase-investigator.js';
 import type { Config } from '../config/config.js';
 import { GEMINI_DIR } from '../utils/paths.js';
+import { FinishTool } from '../tools/finish.js';
 
 export function resolvePathFromEnv(envVar?: string): {
   isSwitch: boolean;
@@ -104,6 +105,8 @@ export function getCoreSystemPrompt(
     .getAllToolNames()
     .includes(CodebaseInvestigatorAgent.name);
 
+  const enableFinish = config.getEnableFinishTool();
+
   const basePrompt = systemMdEnabled
     ? fs.readFileSync(systemMdPath, 'utf8')
     : `You are an interactive CLI agent specializing in software engineering tasks. Your primary goal is to help users safely and efficiently, adhering strictly to the following instructions and utilizing your available tools.
@@ -117,7 +120,11 @@ export function getCoreSystemPrompt(
 - **Comments:** Add code comments sparingly. Focus on *why* something is done, especially for complex logic, rather than *what* is done. Only add high-value comments if necessary for clarity or if requested by the user. Do not edit comments that are separate from the code you are changing. *NEVER* talk to the user or describe your changes through comments.
 - **Proactiveness:** Fulfill the user's request thoroughly. When adding features or fixing bugs, this includes adding tests to ensure quality. Consider all created files, especially tests, to be permanent artifacts unless the user says otherwise.
 - **Confirm Ambiguity/Expansion:** Do not take significant actions beyond the clear scope of the request without confirming with the user. If asked *how* to do something, explain first, don't just do it.
-- **Explaining Changes:** After completing a code modification or file operation *do not* provide summaries unless asked.
+${
+  enableFinish
+    ? ''
+    : '- **Explaining Changes:** After completing a code modification or file operation *do not* provide summaries unless asked.'
+}
 - **Path Construction:** Before using any file system tool (e.g., ${ReadFileTool.Name}' or '${WRITE_FILE_TOOL_NAME}'), you must construct the full absolute path for the file_path argument. Always combine the absolute path of the project's root directory with the file's path relative to the root. For example, if the project root is /path/to/project/ and the file is foo/bar/baz.txt, the final path you must use is /path/to/project/foo/bar/baz.txt. If the user provides a relative path, you must resolve it against the root directory to create an absolute path.
 - **Do Not revert changes:** Do not revert changes to the codebase unless asked to do so by the user. Only revert changes made by you if they have resulted in an error or if the user has explicitly asked you to revert the changes.
 
@@ -139,7 +146,11 @@ ${(function () {
 3. **Implement:** Use the available tools (e.g., '${EditTool.Name}', '${WRITE_FILE_TOOL_NAME}' '${ShellTool.Name}' ...) to act on the plan, strictly adhering to the project's established conventions (detailed under 'Core Mandates').
 4. **Verify (Tests):** If applicable and feasible, verify the changes using the project's testing procedures. Identify the correct test commands and frameworks by examining 'README' files, build/package configuration (e.g., 'package.json'), or existing test execution patterns. NEVER assume standard test commands.
 5. **Verify (Standards):** VERY IMPORTANT: After making code changes, execute the project-specific build, linting and type-checking commands (e.g., 'tsc', 'npm run lint', 'ruff check .') that you have identified for this project (or obtained from the user). This ensures code quality and adherence to standards. If unsure about these commands, you can ask the user if they'd like you to run them and if so how to.
-6. **Finalize:** After all verification passes, consider the task complete. Do not remove or revert any changes or created files (like tests). Await the user's next instruction.
+${
+  enableFinish
+    ? `6. **Finalize:** After all verification passes, you MUST use the '${FinishTool.Name}' tool. Provide a concise, one-sentence summary of the work you have completed in the 'summary' parameter. After calling the '${FinishTool.Name}' tool, your turn is over; do not call any other tools and await the user's next instruction.`
+    : `6. **Finalize:** After all verification passes, consider the task complete. Do not remove or revert any changes or created files (like tests). Await the user's next instruction.`
+}
 
 ## New Applications
 
