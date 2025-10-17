@@ -67,6 +67,10 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
       .getAllTools()
       .map((tool) => new AdkToolAdapter(tool as AnyDeclarativeTool));
 
+    const sessionId = this.config.getSessionId();
+    const userId = os.userInfo().username || randomUUID();
+    const appName = this.appName + '-' + name;
+
     // TODO: handle input schema and output schema
     const adkAgent = new LlmAgent({
       name,
@@ -80,10 +84,10 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
       },
     });
 
-    const runner = new InMemoryRunner({ agent: adkAgent });
-    const sessionId = this.config.getSessionId();
-    const userId = os.userInfo().username || randomUUID();
-    const appName = this.appName + '-' + name;
+    const runner = new InMemoryRunner({
+      agent: adkAgent,
+      appName,
+    });
 
     await runner.sessionService.createSession({
       appName,
