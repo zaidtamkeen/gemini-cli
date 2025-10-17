@@ -15,10 +15,6 @@ import { BaseTool as AdkBaseTool, type RunAsyncToolRequest } from '@google/adk';
 import type { AnyDeclarativeTool } from '../tools/tools.js';
 import * as os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import {
-  convertInputConfigToAdkSchema,
-  convertZodSchemaToAdkSchema,
-} from './adk-schema-utils.js';
 
 /**
  * An adapter that wraps a gemini-cli DeclarativeTool to make it compatible
@@ -63,14 +59,7 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
   }
 
   async run(inputs: AgentInputs, signal: AbortSignal): Promise<OutputObject> {
-    const {
-      name,
-      description,
-      inputConfig,
-      outputConfig,
-      promptConfig,
-      modelConfig,
-    } = this.definition;
+    const { name, description, promptConfig, modelConfig } = this.definition;
 
     const toolRegistry = await this.config.getToolRegistry();
     const tools = toolRegistry
@@ -80,10 +69,6 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
     const adkAgent = new LlmAgent({
       name,
       description,
-      inputSchema: convertInputConfigToAdkSchema(inputConfig),
-      outputSchema: outputConfig
-        ? convertZodSchemaToAdkSchema(outputConfig.schema)
-        : undefined,
       instruction: promptConfig.systemPrompt,
       model: modelConfig.model,
       tools,
