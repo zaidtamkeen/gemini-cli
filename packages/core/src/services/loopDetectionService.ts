@@ -25,7 +25,7 @@ import {
 } from '../utils/messageInspectors.js';
 
 const TOOL_CALL_LOOP_THRESHOLD = 5;
-const CONTENT_LOOP_THRESHOLD = 10;
+const CONTENT_LOOP_THRESHOLD = 100;
 const CONTENT_CHUNK_SIZE = 50;
 const MAX_HISTORY_LENGTH = 1000;
 
