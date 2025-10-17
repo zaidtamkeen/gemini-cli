@@ -402,7 +402,7 @@ function getPatchVersion(args) {
     return {
       releaseVersion,
       npmTag: distTag,
-      previousReleaseTag: latestTag,
+      previousReleaseTag: getLatestTag('v*-preview*'),
     };
   }
 }
