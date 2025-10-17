@@ -1021,12 +1021,12 @@ describe('runNonInteractive', () => {
       createStreamFromEvents(events),
     );
 
-    await runNonInteractive(mockConfig, mockSettings, 'Hello!', 'prompt-id-1');
+    await runNonInteractive(mockConfig, mockSettings, 'Hello!', 'prompt-id-special-chars');
 
     expect(mockGeminiClient.sendMessageStream).toHaveBeenCalledWith(
       [{ text: 'Hello!' }],
       expect.any(AbortSignal),
-      'prompt-id-1',
+      'prompt-id-special-chars',
     );
     expect(processStdoutSpy).toHaveBeenCalledWith('Hello!');
     expect(processStdoutSpy).toHaveBeenCalledWith('\n');
