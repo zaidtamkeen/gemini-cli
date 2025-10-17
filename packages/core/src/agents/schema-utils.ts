@@ -10,7 +10,7 @@ import type { InputConfig } from './types.js';
  * Defines the structure for a JSON Schema object, used for tool function
  * declarations.
  */
-interface JsonSchemaObject {
+export interface JsonSchemaObject {
   type: 'object';
   properties: Record<string, JsonSchemaProperty>;
   required?: string[];
@@ -19,7 +19,7 @@ interface JsonSchemaObject {
 /**
  * Defines the structure for a property within a {@link JsonSchemaObject}.
  */
-interface JsonSchemaProperty {
+export interface JsonSchemaProperty {
   type: 'string' | 'number' | 'integer' | 'boolean' | 'array';
   description: string;
   items?: { type: 'string' | 'number' };

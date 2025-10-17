@@ -47,13 +47,27 @@ export type ActivityCallback = (activity: SubagentActivityEvent) => void;
 
 const TASK_COMPLETE_TOOL_NAME = 'complete_task';
 
+export interface IAgentExecutor {
+  run(inputs: AgentInputs, signal: AbortSignal): Promise<OutputObject>;
+}
+
+export interface IAgentExecutorConstructor {
+  create<TOutput extends z.ZodTypeAny>(
+    definition: AgentDefinition<TOutput>,
+    runtimeContext: Config,
+    onActivity?: ActivityCallback,
+  ): Promise<IAgentExecutor>;
+}
+
 /**
  * Executes an agent loop based on an {@link AgentDefinition}.
  *
  * This executor runs the agent in a loop, calling tools until it calls the
  * mandatory `complete_task` tool to signal completion.
  */
-export class AgentExecutor<TOutput extends z.ZodTypeAny> {
+export class AgentExecutor<TOutput extends z.ZodTypeAny>
+  implements IAgentExecutor
+{
   readonly definition: AgentDefinition<TOutput>;
 
   private readonly agentId: string;

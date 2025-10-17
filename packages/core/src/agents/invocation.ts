@@ -6,6 +6,8 @@
 
 import type { Config } from '../config/config.js';
 import { AgentExecutor } from './executor.js';
+import type { IAgentExecutor } from './executor.js';
+import { AdkAgentExecutor } from './adk-executor.js';
 import type { AnsiOutput } from '../utils/terminalSerializer.js';
 import { BaseToolInvocation, type ToolResult } from '../tools/tools.js';
 import { ToolErrorType } from '../tools/tool-error.js';
@@ -94,11 +96,16 @@ export class SubagentInvocation<
         }
       };
 
-      const executor = await AgentExecutor.create(
-        this.definition,
-        this.config,
-        onActivity,
-      );
+      let executor: IAgentExecutor;
+      if (this.config.getAdkMode()) {
+        executor = await AdkAgentExecutor.create(this.definition, this.config);
+      } else {
+        executor = await AgentExecutor.create(
+          this.definition,
+          this.config,
+          onActivity,
+        );
+      }
 
       const output = await executor.run(this.params, signal);
 
