@@ -88,6 +88,26 @@
       "env": {
         "GEMINI_SANDBOX": "false"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Non-Interactive",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "--",
+        "--yolo",
+        "true",
+        "--prompt",
+        "${input:prompt}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "GEMINI_SANDBOX": "false"
+      }
     }
   ],
   "inputs": [
@@ -96,6 +116,12 @@
       "type": "promptString",
       "description": "Enter the path to the test file (e.g., ${workspaceFolder}/packages/cli/src/ui/components/LoadingIndicator.test.tsx)",
       "default": "${workspaceFolder}/packages/cli/src/ui/components/LoadingIndicator.test.tsx"
+    },
+    {
+      "id": "prompt",
+      "type": "promptString",
+      "description": "Enter a prompt to send to the CLI.",
+      "default": "What day is today?"
     }
   ]
 }

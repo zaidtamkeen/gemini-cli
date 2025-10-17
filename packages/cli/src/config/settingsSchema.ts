@@ -203,6 +203,15 @@ const SETTINGS_SCHEMA = {
         description: 'Enable debug logging of keystrokes to the console.',
         showInDialog: true,
       },
+      adkMode: {
+        type: 'boolean',
+        label: 'ADK Mode',
+        category: 'Mode',
+        requiresRestart: true,
+        default: false,
+        description: 'Enable ADK integration mode',
+        showInDialog: false,
+      },
       sessionRetention: {
         type: 'object',
         label: 'Session Retention',
