@@ -40,12 +40,14 @@ export type AgentInputs = Record<string, unknown>;
 /**
  * Structured events emitted during subagent execution for user observability.
  */
-export interface SubagentActivityEvent {
+interface SubagentActivityEvent {
   isSubagentActivityEvent: true;
   agentName: string;
   type: 'TOOL_CALL_START' | 'TOOL_CALL_END' | 'THOUGHT_CHUNK' | 'ERROR';
   data: Record<string, unknown>;
 }
+
+export type { SubagentActivityEvent };
 
 /**
  * The definition for an agent.

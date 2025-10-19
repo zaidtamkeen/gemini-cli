@@ -6,9 +6,20 @@
 
 import type { IAgentExecutor } from './executor.js';
 import { TASK_COMPLETE_TOOL_NAME } from './executor.js';
-import type { AgentDefinition, AgentInputs, OutputObject } from './types.js';
+import type {
+  AgentDefinition,
+  AgentInputs,
+  OutputObject,
+  OutputConfig,
+} from './types.js';
 import { AgentTerminateMode } from './types.js';
-import { LlmAgent, InMemoryRunner } from '@google/adk';
+import {
+  LlmAgent,
+  InMemoryRunner,
+  getFunctionCalls,
+  getFunctionResponses,
+  type Event,
+} from '@google/adk';
 import type { z } from 'zod';
 import type { Config } from '../config/config.js';
 import type { Part, FunctionDeclaration, Schema } from '@google/genai';
@@ -17,6 +28,8 @@ import { convertInputConfigToGenaiSchema } from './schema-converter.js';
 import type { AnyDeclarativeTool } from '../tools/tools.js';
 import * as os from 'node:os';
 import { randomUUID } from 'node:crypto';
+import type { ActivityCallback } from './executor.js';
+import type { SubagentActivityEvent } from './types.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { buildSystemPrompt } from './prompt-builder.js';
 import { Type } from '@google/genai';
@@ -51,17 +64,24 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
   private readonly appName: string = 'gemini-cli';
   private readonly definition: AgentDefinition<TOutput>;
   private readonly config: Config;
+  private readonly onActivity?: ActivityCallback;
 
-  constructor(definition: AgentDefinition<TOutput>, config: Config) {
+  constructor(
+    definition: AgentDefinition<TOutput>,
+    config: Config,
+    onActivity?: ActivityCallback,
+  ) {
     this.definition = definition;
     this.config = config;
+    this.onActivity = onActivity;
   }
 
   static async create<TOutput extends z.ZodTypeAny>(
     definition: AgentDefinition<TOutput>,
     config: Config,
+    onActivity?: ActivityCallback,
   ): Promise<AdkAgentExecutor<TOutput>> {
-    return new AdkAgentExecutor(definition, config);
+    return new AdkAgentExecutor(definition, config, onActivity);
   }
 
   private async prepareTools(): Promise<AdkToolAdapter[]> {
@@ -129,6 +149,22 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
     return toolsList;
   }
 
+  /** Emits an activity event to the configured callback. */
+  private emitActivity(
+    type: SubagentActivityEvent['type'],
+    data: Record<string, unknown>,
+  ): void {
+    if (this.onActivity) {
+      const event: SubagentActivityEvent = {
+        isSubagentActivityEvent: true,
+        agentName: this.definition.name,
+        type,
+        data,
+      };
+      this.onActivity(event);
+    }
+  }
+
   async run(inputs: AgentInputs, signal: AbortSignal): Promise<OutputObject> {
     const { name, description, modelConfig } = this.definition;
 
@@ -172,14 +208,65 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
     };
 
     const { outputConfig } = this.definition;
-    let finalResult = '';
     const eventStream = await runner.runAsync({
       userId,
       sessionId,
       newMessage: content,
     });
 
+    const finalResult = await this.processEventStream(
+      eventStream,
+      outputConfig,
+    );
+
+    if (signal.aborted) {
+      return {
+        result: 'Execution aborted.',
+        terminate_reason: AgentTerminateMode.ABORTED,
+      };
+    }
+
+    return {
+      result: finalResult,
+      terminate_reason: AgentTerminateMode.GOAL,
+    };
+  }
+
+  private async processEventStream(
+    eventStream: AsyncGenerator<Event>,
+    outputConfig: OutputConfig<TOutput> | undefined,
+  ): Promise<string> {
+    let finalResult = '';
+
     for await (const event of eventStream) {
+      const functionCalls = getFunctionCalls(event);
+      if (functionCalls.length > 0) {
+        for (const call of functionCalls) {
+          this.emitActivity('TOOL_CALL_START', {
+            name: call.name,
+            args: call.args,
+          });
+        }
+      }
+
+      const functionResponses = getFunctionResponses(event);
+      if (functionResponses.length > 0) {
+        for (const response of functionResponses) {
+          this.emitActivity('TOOL_CALL_END', {
+            name: response.name,
+            output: JSON.stringify(response.response),
+          });
+        }
+      }
+
+      if (event.content?.parts) {
+        for (const part of event.content.parts) {
+          if (part.thought) {
+            this.emitActivity('THOUGHT_CHUNK', { text: part.thought });
+          }
+        }
+      }
+
       if (event.content?.parts) {
         if (outputConfig) {
           for (const part of event.content.parts) {
@@ -201,17 +288,6 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
         break;
       }
     }
-
-    if (signal.aborted) {
-      return {
-        result: 'Execution aborted.',
-        terminate_reason: AgentTerminateMode.ABORTED,
-      };
-    }
-
-    return {
-      result: finalResult,
-      terminate_reason: AgentTerminateMode.GOAL,
-    };
+    return finalResult;
   }
 }
