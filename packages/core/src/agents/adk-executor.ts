@@ -18,6 +18,7 @@ import type { AnyDeclarativeTool } from '../tools/tools.js';
 import * as os from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { buildSystemPrompt } from './prompt-builder.js';
 import { Type } from '@google/genai';
 
 /**
@@ -129,7 +130,7 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
   }
 
   async run(inputs: AgentInputs, signal: AbortSignal): Promise<OutputObject> {
-    const { name, description, promptConfig, modelConfig } = this.definition;
+    const { name, description, modelConfig } = this.definition;
 
     const tools = await this.prepareTools();
 
@@ -140,7 +141,11 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
     const adkAgent = new LlmAgent({
       name,
       description,
-      instruction: promptConfig.systemPrompt,
+      instruction: await buildSystemPrompt(
+        inputs,
+        this.definition,
+        this.config,
+      ),
       model: modelConfig.model,
       tools,
       generateContentConfig: {

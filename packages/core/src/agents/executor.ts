@@ -19,7 +19,7 @@ import type {
 import { executeToolCall } from '../core/nonInteractiveToolExecutor.js';
 import { ToolRegistry } from '../tools/tool-registry.js';
 import type { ToolCallRequestInfo } from '../core/turn.js';
-import { getDirectoryContextString } from '../utils/environmentContext.js';
+
 import { GrepTool } from '../tools/grep.js';
 import { RipGrepTool } from '../tools/ripGrep.js';
 import { LSTool } from '../tools/ls.js';
@@ -37,6 +37,7 @@ import type {
   SubagentActivityEvent,
 } from './types.js';
 import { AgentTerminateMode } from './types.js';
+import { buildSystemPrompt } from './prompt-builder.js';
 import { templateString } from './utils.js';
 import { parseThought } from '../utils/thoughtUtils.js';
 import { type z } from 'zod';
@@ -343,7 +344,7 @@ export class AgentExecutor<TOutput extends z.ZodTypeAny>
 
     // Build system instruction from the templated prompt string.
     const systemInstruction = promptConfig.systemPrompt
-      ? await this.buildSystemPrompt(inputs)
+      ? await buildSystemPrompt(inputs, this.definition, this.runtimeContext)
       : undefined;
 
     try {
@@ -657,35 +658,6 @@ export class AgentExecutor<TOutput extends z.ZodTypeAny>
     toolsList.push(completeTool);
 
     return toolsList;
-  }
-
-  /** Builds the system prompt from the agent definition and inputs. */
-  private async buildSystemPrompt(inputs: AgentInputs): Promise<string> {
-    const { promptConfig } = this.definition;
-    if (!promptConfig.systemPrompt) {
-      return '';
-    }
-
-    // Inject user inputs into the prompt template.
-    let finalPrompt = templateString(promptConfig.systemPrompt, inputs);
-
-    // Append environment context (CWD and folder structure).
-    const dirContext = await getDirectoryContextString(this.runtimeContext);
-    finalPrompt += `\n\n# Environment Context\n${dirContext}`;
-
-    // Append standard rules for non-interactive execution.
-    finalPrompt += `
-Important Rules:
-* You are running in a non-interactive mode. You CANNOT ask the user for input or clarification.
-* Work systematically using available tools to complete your task.
-* Always use absolute paths for file operations. Construct them using the provided "Environment Context".`;
-
-    finalPrompt += `
-* When you have completed your task, you MUST call the \`${TASK_COMPLETE_TOOL_NAME}\` tool.
-* Do not call any other tools in the same turn as \`${TASK_COMPLETE_TOOL_NAME}\`.
-* This is the ONLY way to complete your mission. If you stop calling tools without calling this, you have failed.`;
-
-    return finalPrompt;
   }
 
   /**
