@@ -98,7 +98,11 @@ export class SubagentInvocation<
 
       let executor: IAgentExecutor;
       if (this.config.getAdkMode()) {
-        executor = await AdkAgentExecutor.create(this.definition, this.config);
+        executor = await AdkAgentExecutor.create(
+          this.definition,
+          this.config,
+          onActivity,
+        );
       } else {
         executor = await AgentExecutor.create(
           this.definition,

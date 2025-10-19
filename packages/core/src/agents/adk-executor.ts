@@ -33,6 +33,7 @@ import type { SubagentActivityEvent } from './types.js';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { buildSystemPrompt } from './prompt-builder.js';
 import { Type } from '@google/genai';
+import { parseThought } from '../utils/thoughtUtils.js';
 
 /**
  * An adapter that wraps a gemini-cli DeclarativeTool to make it compatible
@@ -187,6 +188,10 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
       generateContentConfig: {
         temperature: modelConfig.temp,
         topP: modelConfig.top_p,
+        thinkingConfig: {
+          includeThoughts: true,
+          thinkingBudget: modelConfig.thinkingBudget ?? -1,
+        },
       },
       inputSchema: convertInputConfigToGenaiSchema(this.definition.inputConfig),
     });
@@ -260,10 +265,11 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
       }
 
       if (event.content?.parts) {
-        for (const part of event.content.parts) {
-          if (part.thought) {
-            this.emitActivity('THOUGHT_CHUNK', { text: part.thought });
-          }
+        const { subject } = parseThought(
+          event.content.parts?.find((p) => p.thought)?.text || '',
+        );
+        if (subject) {
+          this.emitActivity('THOUGHT_CHUNK', { text: subject });
         }
       }
 
