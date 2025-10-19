@@ -34,6 +34,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import { buildSystemPrompt } from './prompt-builder.js';
 import { Type } from '@google/genai';
 import { parseThought } from '../utils/thoughtUtils.js';
+import { templateString } from './utils.js';
 
 /**
  * An adapter that wraps a gemini-cli DeclarativeTool to make it compatible
@@ -207,9 +208,12 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
       sessionId,
     });
 
+    const query = this.definition.promptConfig.query
+      ? templateString(this.definition.promptConfig.query, inputs)
+      : 'Get Started!';
     const content = {
       role: 'user',
-      parts: [{ text: JSON.stringify(inputs['objective']) }],
+      parts: [{ text: query }],
     };
 
     const { outputConfig } = this.definition;
