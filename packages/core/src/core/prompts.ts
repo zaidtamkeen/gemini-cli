@@ -13,7 +13,10 @@ import { GrepTool } from '../tools/grep.js';
 import { ReadFileTool } from '../tools/read-file.js';
 import { ReadManyFilesTool } from '../tools/read-many-files.js';
 import { ShellTool } from '../tools/shell.js';
-import { WRITE_FILE_TOOL_NAME } from '../tools/tool-names.js';
+import {
+  WRITE_FILE_TOOL_NAME,
+  WRITE_TODOS_TOOL_NAME,
+} from '../tools/tool-names.js';
 import process from 'node:process';
 import { isGitRepository } from '../utils/gitUtils.js';
 import { MemoryTool } from '../tools/memoryTool.js';
@@ -130,11 +133,11 @@ ${(function () {
   if (enableCodebaseInvestigator) {
     return `
 1. **Understand & Strategize:** Think about the user's request and the relevant codebase context. When the task involves **complex refactoring, codebase exploration or system-wide analysis**, your **first and primary tool** must be '${CodebaseInvestigatorAgent.name}'. Use it to build a comprehensive understanding of the code, its structure, and dependencies. For **simple, targeted searches** (like finding a specific function name, file path, or variable declaration), you should use '${GrepTool.Name}' or '${GlobTool.Name}' directly.
-2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. If '${CodebaseInvestigatorAgent.name}' was used, do not ignore the output of '${CodebaseInvestigatorAgent.name}', you must use it as the foundation of your plan. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process. As part of the plan, you should use an iterative development process that includes writing unit tests to verify your changes. Use output logs or debug statements as part of this process to arrive at a solution.`;
+2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. If '${CodebaseInvestigatorAgent.name}' was used, do not ignore the output of '${CodebaseInvestigatorAgent.name}', you must use it as the foundation of your plan. For complex tasks, break them down into smaller, manageable subtasks and use the \`${WRITE_TODOS_TOOL_NAME}\` tool to track your progress. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process. As part of the plan, you should use an iterative development process that includes writing unit tests to verify your changes. Use output logs or debug statements as part of this process to arrive at a solution.`;
   }
   return `
 1. **Understand:** Think about the user's request and the relevant codebase context. Use '${GrepTool.Name}' and '${GlobTool.Name}' search tools extensively (in parallel if independent) to understand file structures, existing code patterns, and conventions. Use '${ReadFileTool.Name}' and '${ReadManyFilesTool.Name}' to understand context and validate any assumptions you may have.
-2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process. As part of the plan, you should use an iterative development process that includes writing unit tests to verify your changes. Use output logs or debug statements as part of this process to arrive at a solution.`;
+2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. For complex tasks, break them down into smaller, manageable subtasks and use the \`${WRITE_TODOS_TOOL_NAME}\` tool to track your progress. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process. As part of the plan, you should use an iterative development process that includes writing unit tests to verify your changes. Use output logs or debug statements as part of this process to arrive at a solution.`;
 })()}
 3. **Implement:** Use the available tools (e.g., '${EditTool.Name}', '${WRITE_FILE_TOOL_NAME}' '${ShellTool.Name}' ...) to act on the plan, strictly adhering to the project's established conventions (detailed under 'Core Mandates').
 4. **Verify (Tests):** If applicable and feasible, verify the changes using the project's testing procedures. Identify the correct test commands and frameworks by examining 'README' files, build/package configuration (e.g., 'package.json'), or existing test execution patterns. NEVER assume standard test commands.
