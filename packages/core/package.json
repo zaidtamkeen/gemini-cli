@@ -64,7 +64,8 @@
     "tree-sitter-bash": "^0.25.0",
     "undici": "^7.10.0",
     "web-tree-sitter": "^0.25.10",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "zod-to-json-schema": "^3.24.6"
   },
   "optionalDependencies": {
     "@lydell/node-pty": "1.1.0",
