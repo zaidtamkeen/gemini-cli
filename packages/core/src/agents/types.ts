@@ -72,6 +72,9 @@ export interface AgentDefinition<TOutput extends z.ZodTypeAny = z.ZodUnknown> {
    * @returns A string representation of the final output.
    */
   processOutput?: (output: z.infer<TOutput>) => string;
+
+  /** A list of subagents that can be invoked by this agent. */
+  subagents?: Array<AgentDefinition<z.ZodUnknown>>;
 }
 
 /**

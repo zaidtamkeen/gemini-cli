@@ -59,6 +59,100 @@ export class AdkToolAdapter extends AdkBaseTool {
   }
 }
 
+async function createAdkAgent<TOutput extends z.ZodTypeAny>(
+  config: Config,
+  definition: AgentDefinition<TOutput>,
+  inputs: AgentInputs,
+): Promise<LlmAgent> {
+  const tools = await prepareTools(config, definition);
+  const { name, description, modelConfig } = definition;
+
+  return new LlmAgent({
+    name,
+    description,
+    instruction: await buildSystemPrompt(inputs, definition, config),
+    model: modelConfig.model,
+    tools,
+    generateContentConfig: {
+      temperature: modelConfig.temp,
+      topP: modelConfig.top_p,
+      thinkingConfig: {
+        includeThoughts: true,
+        thinkingBudget: modelConfig.thinkingBudget ?? -1,
+      },
+    },
+    inputSchema: convertInputConfigToGenaiSchema(definition.inputConfig),
+  });
+}
+
+async function prepareTools<TOutput extends z.ZodTypeAny>(
+  config: Config,
+  definition: AgentDefinition<TOutput>,
+): Promise<AdkToolAdapter[]> {
+  const toolRegistry = await config.getToolRegistry();
+  const { toolConfig, outputConfig } = definition;
+  const toolsList: AdkToolAdapter[] = [];
+
+  if (toolConfig) {
+    const toolNamesToLoad: string[] = [];
+    for (const toolRef of toolConfig.tools) {
+      if (typeof toolRef === 'string') {
+        toolNamesToLoad.push(toolRef);
+      } else {
+        toolsList.push(new AdkToolAdapter(toolRef as AnyDeclarativeTool));
+      }
+    }
+    toolsList.push(
+      ...toolRegistry
+        .getAllTools()
+        .filter((tool) => toolNamesToLoad.includes(tool.name))
+        .map((tool) => new AdkToolAdapter(tool)),
+    );
+  }
+
+  const completeTool = {
+    name: TASK_COMPLETE_TOOL_NAME,
+    description: outputConfig
+      ? 'Call this tool to submit your final answer and complete the task. This is the ONLY way to finish.'
+      : 'Call this tool to signal that you have completed your task. This is the ONLY way to finish.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+      required: [],
+    },
+  };
+
+  if (outputConfig) {
+    const jsonSchema = zodToJsonSchema(outputConfig.schema);
+    const { properties, required } = jsonSchema as {
+      properties?: Record<string, Schema>;
+      required?: string[];
+    };
+
+    if (properties) {
+      completeTool.parameters.properties = properties;
+    }
+    if (required) {
+      (completeTool.parameters.required as string[]).push(...required);
+    }
+  }
+
+  toolsList.push(
+    new AdkToolAdapter({
+      name: TASK_COMPLETE_TOOL_NAME,
+      description: completeTool.description,
+      schema: completeTool as FunctionDeclaration,
+      build: (args: Record<string, unknown>) => ({
+        async execute() {
+          return JSON.stringify(args);
+        },
+      }),
+    } as unknown as AnyDeclarativeTool),
+  );
+
+  return toolsList;
+}
+
 /**
  * An agent executor that integrates with the ADK.
  */
@@ -89,71 +183,6 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
     return new AdkAgentExecutor(definition, config, onActivity);
   }
 
-  private async prepareTools(): Promise<AdkToolAdapter[]> {
-    const toolRegistry = await this.config.getToolRegistry();
-    const { toolConfig, outputConfig } = this.definition;
-    const toolsList: AdkToolAdapter[] = [];
-
-    if (toolConfig) {
-      const toolNamesToLoad: string[] = [];
-      for (const toolRef of toolConfig.tools) {
-        if (typeof toolRef === 'string') {
-          toolNamesToLoad.push(toolRef);
-        } else {
-          toolsList.push(new AdkToolAdapter(toolRef as AnyDeclarativeTool));
-        }
-      }
-      toolsList.push(
-        ...toolRegistry
-          .getAllTools()
-          .filter((tool) => toolNamesToLoad.includes(tool.name))
-          .map((tool) => new AdkToolAdapter(tool)),
-      );
-    }
-
-    const completeTool = {
-      name: TASK_COMPLETE_TOOL_NAME,
-      description: outputConfig
-        ? 'Call this tool to submit your final answer and complete the task. This is the ONLY way to finish.'
-        : 'Call this tool to signal that you have completed your task. This is the ONLY way to finish.',
-      parameters: {
-        type: Type.OBJECT,
-        properties: {},
-        required: [],
-      },
-    };
-
-    if (outputConfig) {
-      const jsonSchema = zodToJsonSchema(outputConfig.schema);
-      const { properties, required } = jsonSchema as {
-        properties?: Record<string, Schema>;
-        required?: string[];
-      };
-
-      if (properties) {
-        completeTool.parameters.properties = properties;
-      }
-      if (required) {
-        (completeTool.parameters.required as string[]).push(...required);
-      }
-    }
-
-    toolsList.push(
-      new AdkToolAdapter({
-        name: TASK_COMPLETE_TOOL_NAME,
-        description: completeTool.description,
-        schema: completeTool as FunctionDeclaration,
-        build: (args: Record<string, unknown>) => ({
-          async execute() {
-            return JSON.stringify(args);
-          },
-        }),
-      } as unknown as AnyDeclarativeTool),
-    );
-
-    return toolsList;
-  }
-
   /** Emits an activity event to the configured callback. */
   private emitActivity(
     type: SubagentActivityEvent['type'],
@@ -180,35 +209,14 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
     );
 
     try {
-      const { name, description, modelConfig } = this.definition;
-
-      const tools = await this.prepareTools();
+      const adkAgent = await createAdkAgent(
+        this.config,
+        this.definition,
+        inputs,
+      );
 
       const sessionId = this.config.getSessionId();
       const userId = os.userInfo().username || randomUUID();
-
-      const adkAgent = new LlmAgent({
-        name,
-        description,
-        instruction: await buildSystemPrompt(
-          inputs,
-          this.definition,
-          this.config,
-        ),
-        model: modelConfig.model,
-        tools,
-        generateContentConfig: {
-          temperature: modelConfig.temp,
-          topP: modelConfig.top_p,
-          thinkingConfig: {
-            includeThoughts: true,
-            thinkingBudget: modelConfig.thinkingBudget ?? -1,
-          },
-        },
-        inputSchema: convertInputConfigToGenaiSchema(
-          this.definition.inputConfig,
-        ),
-      });
 
       const runner = new InMemoryRunner({
         agent: adkAgent,
