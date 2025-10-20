@@ -1077,6 +1077,12 @@ describe('runNonInteractive', () => {
         .mockImplementation(() => true);
 
       let capturedSignalHandler: (() => void) | undefined;
+      vi.spyOn(process, 'on').mockImplementation((event, handler) => {
+        if (event === 'SIGINT') {
+          capturedSignalHandler = handler as () => void;
+        }
+        return process;
+      });
 
       // Create a stream that will be aborted
       async function* slowStream(): AsyncGenerator<ServerGeminiStreamEvent> {
