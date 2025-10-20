@@ -159,6 +159,11 @@ export class AgentExecutor<TOutput extends z.ZodTypeAny>
     parentPromptId: string | undefined,
     onActivity?: ActivityCallback,
   ) {
+    if (definition.subagents && !runtimeContext.getAdkMode()) {
+      throw new Error(
+        'Please enable adkMode in your settings.json to use subagents with subagents.',
+      );
+    }
     this.definition = definition;
     this.runtimeContext = runtimeContext;
     this.toolRegistry = toolRegistry;
