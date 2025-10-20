@@ -310,7 +310,22 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
               part.functionResponse &&
               part.functionResponse.name === TASK_COMPLETE_TOOL_NAME
             ) {
-              finalResult = JSON.stringify(part.functionResponse.response);
+              const response = part.functionResponse.response as {
+                result: string;
+              };
+              const result = JSON.parse(response.result);
+              const validationResult = outputConfig.schema.safeParse(result);
+              if (validationResult.success) {
+                if (this.definition.processOutput) {
+                  finalResult = this.definition.processOutput(
+                    validationResult.data,
+                  );
+                } else {
+                  finalResult = JSON.stringify(part.functionResponse.response);
+                }
+              } else {
+                finalResult = JSON.stringify(validationResult.error.flatten());
+              }
               break;
             }
           }
