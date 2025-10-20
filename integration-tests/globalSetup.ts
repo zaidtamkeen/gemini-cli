@@ -20,7 +20,7 @@ let runDir = ''; // Make runDir accessible in teardown
 
 export async function setup() {
   runDir = join(integrationTestsDir, `${Date.now()}`);
-  await mkdir(runDir, { recursive: true });
+  await mkdir(runDir, { recursive: true, mode: 0o777 });
 
   // Set the home directory to the test run directory to avoid conflicts
   // with the user's local config.
