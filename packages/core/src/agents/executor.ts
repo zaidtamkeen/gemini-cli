@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { randomUUID } from 'node:crypto';
 import type { Config } from '../config/config.js';
 import { reportError } from '../utils/errorReporting.js';
 import { GeminiChat, StreamEventType } from '../core/geminiChat.js';
@@ -46,6 +47,17 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 /** A callback function to report on agent activity. */
 export type ActivityCallback = (activity: SubagentActivityEvent) => void;
+
+export function createAgentId(
+  agentName: string,
+  parentPromptId?: string,
+): string {
+  const parentPrefix = parentPromptId ? `${parentPromptId}-` : '';
+  const agentId = `${parentPrefix}${agentName}-${randomUUID()}`;
+  // This is a workaround to prevent the agentId from being too long
+  // and causing issues with the ADK.
+  return agentId.substring(0, 30);
+}
 
 export const TASK_COMPLETE_TOOL_NAME = 'complete_task';
 
@@ -151,12 +163,7 @@ export class AgentExecutor<TOutput extends z.ZodTypeAny>
     this.runtimeContext = runtimeContext;
     this.toolRegistry = toolRegistry;
     this.onActivity = onActivity;
-
-    const randomIdPart = Math.random().toString(36).slice(2, 8);
-    // parentPromptId will be undefined if this agent is invoked directly
-    // (top-level), rather than as a sub-agent.
-    const parentPrefix = parentPromptId ? `${parentPromptId}-` : '';
-    this.agentId = `${parentPrefix}${this.definition.name}-${randomIdPart}`;
+    this.agentId = createAgentId(this.definition.name, parentPromptId);
   }
 
   /**

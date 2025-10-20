@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IAgentExecutor } from './executor.js';
+import { createAgentId, type IAgentExecutor } from './executor.js';
 import { TASK_COMPLETE_TOOL_NAME } from './executor.js';
 import type {
   AgentDefinition,
@@ -35,6 +35,8 @@ import { buildSystemPrompt } from './prompt-builder.js';
 import { Type } from '@google/genai';
 import { parseThought } from '../utils/thoughtUtils.js';
 import { templateString } from './utils.js';
+import { logAgentStart, logAgentFinish } from '../telemetry/loggers.js';
+import { AgentStartEvent, AgentFinishEvent } from '../telemetry/types.js';
 
 /**
  * An adapter that wraps a gemini-cli DeclarativeTool to make it compatible
@@ -63,10 +65,10 @@ export class AdkToolAdapter extends AdkBaseTool {
 export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
   implements IAgentExecutor
 {
-  private readonly appName: string = 'gemini-cli';
   private readonly definition: AgentDefinition<TOutput>;
   private readonly config: Config;
   private readonly onActivity?: ActivityCallback;
+  private readonly agentId: string;
 
   constructor(
     definition: AgentDefinition<TOutput>,
@@ -76,6 +78,7 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
     this.definition = definition;
     this.config = config;
     this.onActivity = onActivity;
+    this.agentId = createAgentId(this.definition.name);
   }
 
   static async create<TOutput extends z.ZodTypeAny>(
@@ -168,77 +171,100 @@ export class AdkAgentExecutor<TOutput extends z.ZodTypeAny>
   }
 
   async run(inputs: AgentInputs, signal: AbortSignal): Promise<OutputObject> {
-    const { name, description, modelConfig } = this.definition;
+    const startTime = Date.now();
+    let terminateReason: AgentTerminateMode = AgentTerminateMode.ERROR;
 
-    const tools = await this.prepareTools();
-
-    const sessionId = this.config.getSessionId();
-    const userId = os.userInfo().username || randomUUID();
-    const appName = this.appName + '-' + name;
-
-    const adkAgent = new LlmAgent({
-      name,
-      description,
-      instruction: await buildSystemPrompt(
-        inputs,
-        this.definition,
-        this.config,
-      ),
-      model: modelConfig.model,
-      tools,
-      generateContentConfig: {
-        temperature: modelConfig.temp,
-        topP: modelConfig.top_p,
-        thinkingConfig: {
-          includeThoughts: true,
-          thinkingBudget: modelConfig.thinkingBudget ?? -1,
-        },
-      },
-      inputSchema: convertInputConfigToGenaiSchema(this.definition.inputConfig),
-    });
-
-    const runner = new InMemoryRunner({
-      agent: adkAgent,
-      appName,
-    });
-
-    await runner.sessionService.createSession({
-      appName,
-      userId,
-      sessionId,
-    });
-
-    const query = this.definition.promptConfig.query
-      ? templateString(this.definition.promptConfig.query, inputs)
-      : 'Get Started!';
-    const content = {
-      role: 'user',
-      parts: [{ text: query }],
-    };
-
-    const { outputConfig } = this.definition;
-    const eventStream = await runner.runAsync({
-      userId,
-      sessionId,
-      newMessage: content,
-    });
-
-    const finalResult = await this.processEventStream(
-      eventStream,
-      outputConfig,
+    logAgentStart(
+      this.config,
+      new AgentStartEvent(this.agentId, this.definition.name),
     );
 
-    if (signal.aborted) {
-      return {
-        result: 'Execution aborted.',
-        terminate_reason: AgentTerminateMode.ABORTED,
-      };
-    }
+    try {
+      const { name, description, modelConfig } = this.definition;
 
-    return {
-      result: finalResult,
-      terminate_reason: AgentTerminateMode.GOAL,
-    };
+      const tools = await this.prepareTools();
+
+      const sessionId = this.config.getSessionId();
+      const userId = os.userInfo().username || randomUUID();
+
+      const adkAgent = new LlmAgent({
+        name,
+        description,
+        instruction: await buildSystemPrompt(
+          inputs,
+          this.definition,
+          this.config,
+        ),
+        model: modelConfig.model,
+        tools,
+        generateContentConfig: {
+          temperature: modelConfig.temp,
+          topP: modelConfig.top_p,
+          thinkingConfig: {
+            includeThoughts: true,
+            thinkingBudget: modelConfig.thinkingBudget ?? -1,
+          },
+        },
+        inputSchema: convertInputConfigToGenaiSchema(
+          this.definition.inputConfig,
+        ),
+      });
+
+      const runner = new InMemoryRunner({
+        agent: adkAgent,
+        appName: this.agentId,
+      });
+
+      await runner.sessionService.createSession({
+        appName: this.agentId,
+        userId,
+        sessionId,
+      });
+
+      const query = this.definition.promptConfig.query
+        ? templateString(this.definition.promptConfig.query, inputs)
+        : 'Get Started!';
+      const content = {
+        role: 'user',
+        parts: [{ text: query }],
+      };
+
+      const { outputConfig } = this.definition;
+      const eventStream = await runner.runAsync({
+        userId,
+        sessionId,
+        newMessage: content,
+      });
+
+      const finalResult = await this.processEventStream(
+        eventStream,
+        outputConfig,
+      );
+
+      if (signal.aborted) {
+        return {
+          result: 'Execution aborted.',
+          terminate_reason: AgentTerminateMode.ABORTED,
+        };
+      }
+
+      terminateReason = AgentTerminateMode.GOAL;
+      return {
+        result: finalResult,
+        terminate_reason: terminateReason,
+      };
+    } finally {
+      logAgentFinish(
+        this.config,
+        new AgentFinishEvent(
+          this.agentId,
+          this.definition.name,
+          Date.now() - startTime,
+          -1, // turnCounter is not available in AdkAgentExecutor
+          terminateReason,
+        ),
+      );
+    }
   }
 
   private async processEventStream(
