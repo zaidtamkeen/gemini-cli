@@ -9,7 +9,7 @@ if (process.env['NO_COLOR'] !== undefined) {
   delete process.env['NO_COLOR'];
 }
 
-import { mkdir, readdir, rm } from 'node:fs/promises';
+import { mkdir, readdir, rm, chmod } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +21,7 @@ let runDir = ''; // Make runDir accessible in teardown
 export async function setup() {
   runDir = join(integrationTestsDir, `${Date.now()}`);
   await mkdir(runDir, { recursive: true });
+  await chmod(runDir, 0o777);
 
   // Set the home directory to the test run directory to avoid conflicts
   // with the user's local config.
