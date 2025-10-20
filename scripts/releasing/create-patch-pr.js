@@ -52,8 +52,7 @@ async function main() {
     console.log('Running in dry-run mode.');
   }
 
-  // run('git fetch --all --tags --prune', dryRun);
-  run('git fetch origin --tags --prune', dryRun);
+  run('git fetch --all --tags --prune', dryRun);
 
   const releaseInfo = getLatestReleaseInfo({ argv, channel });
   const latestTag = releaseInfo.currentTag;
