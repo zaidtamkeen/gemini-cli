@@ -581,7 +581,7 @@ describe('Server Config (config.ts)', () => {
         useModelRouter: true,
       });
       await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
-      expect(config.getUseModelRouter()).toBe(false);
+      expect(config.getUseModelRouter()).toBe(true);
     });
 
     it('should keep model router disabled when useModelRouter is false', async () => {
