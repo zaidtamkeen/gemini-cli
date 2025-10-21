@@ -47,7 +47,6 @@ import {
   DEFAULT_GEMINI_EMBEDDING_MODEL,
   DEFAULT_GEMINI_FLASH_MODEL,
   DEFAULT_GEMINI_MODEL,
-  DEFAULT_GEMINI_MODEL_AUTO,
   DEFAULT_THINKING_MODE,
 } from './models.js';
 import { shouldAttemptBrowserLaunch } from '../utils/browser.js';
@@ -549,16 +548,6 @@ export class Config {
   }
 
   async refreshAuth(authMethod: AuthType) {
-    this.useModelRouter = this.initialUseModelRouter;
-    if (this.disableModelRouterForAuth?.includes(authMethod)) {
-      this.useModelRouter = false;
-      if (this.model === DEFAULT_GEMINI_MODEL_AUTO) {
-        this.model = DEFAULT_GEMINI_MODEL;
-      }
-    } else {
-      this.model = DEFAULT_GEMINI_MODEL_AUTO;
-    }
-
     // Vertex and Genai have incompatible encryption and sending history with
     // thoughtSignature from Genai to Vertex will fail, we need to strip them
     if (
