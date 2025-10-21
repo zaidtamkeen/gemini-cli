@@ -65,17 +65,12 @@ async function createAdkAgent<TOutput extends z.ZodTypeAny>(
   inputs: AgentInputs,
 ): Promise<LlmAgent> {
   const tools = await prepareTools(config, definition);
-  const {
-    name,
-    description,
-    modelConfig,
-    subagents: subagentDefinitions,
-  } = definition;
+  const { name, description, modelConfig, subagentConfig } = definition;
 
   let subagents: LlmAgent[] = [];
-  if (subagentDefinitions) {
+  if (subagentConfig) {
     subagents = await Promise.all(
-      subagentDefinitions.map((subAgentDef: AgentDefinition) =>
+      subagentConfig.subagents.map((subAgentDef) =>
         createAdkAgent(config, subAgentDef, inputs),
       ),
     );

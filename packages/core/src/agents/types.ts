@@ -63,6 +63,7 @@ export interface AgentDefinition<TOutput extends z.ZodTypeAny = z.ZodUnknown> {
   modelConfig?: ModelConfig;
   runConfig?: RunConfig;
   toolConfig?: ToolConfig;
+  subagentConfig?: SubagentConfig;
   outputConfig?: OutputConfig<TOutput>;
   inputConfig: InputConfig;
   /**
@@ -73,9 +74,6 @@ export interface AgentDefinition<TOutput extends z.ZodTypeAny = z.ZodUnknown> {
    * @returns A string representation of the final output.
    */
   processOutput?: (output: z.infer<TOutput>) => string;
-
-  /** A list of subagents that can be invoked by this agent. */
-  subagents?: Array<AgentDefinition<z.ZodUnknown>>;
 }
 
 /**
@@ -106,6 +104,13 @@ export interface PromptConfig {
  */
 export interface ToolConfig {
   tools: Array<string | FunctionDeclaration | AnyDeclarativeTool>;
+}
+
+/**
+ * Configures the subagents available to the agent during its execution.
+ */
+export interface SubagentConfig {
+  subagents: AgentDefinition[];
 }
 
 /**

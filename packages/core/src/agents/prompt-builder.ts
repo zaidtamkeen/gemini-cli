@@ -22,13 +22,12 @@ export async function buildSystemPrompt<TOutput extends z.ZodTypeAny>(
     return '';
   }
 
-  // If the system prompt is a function, send through the config and return.
+  let finalPrompt: string;
   if (typeof promptConfig.systemPrompt === 'function') {
-    return promptConfig.systemPrompt(runtimeContext);
+    finalPrompt = promptConfig.systemPrompt(runtimeContext);
+  } else {
+    finalPrompt = templateString(promptConfig.systemPrompt, inputs);
   }
-
-  // Else, inject user inputs into the prompt template.
-  let finalPrompt = templateString(promptConfig.systemPrompt, inputs);
 
   // Append environment context (CWD and folder structure).
   const dirContext = await getDirectoryContextString(runtimeContext);

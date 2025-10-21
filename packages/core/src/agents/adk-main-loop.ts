@@ -8,8 +8,15 @@ import type { AgentDefinition } from './types.js';
 import { z } from 'zod';
 import { getCoreSystemPrompt } from '../core/prompts.js';
 import type { Config } from '../config/config.js';
+import * as toolNames from '../tools/tool-names.js';
 
 const AdkMainLoopOutputSchema = z.object({
+  WorkDone: z.string().describe('A detailed summary of all steps taken.'),
+  ToolsCalled: z
+    .array(z.string())
+    .describe(
+      'An ordered list of each tool call and the parameters passed to it.',
+    ),
   FinalResult: z.string().describe('The final output of the main loop agent.'),
 });
 
@@ -29,13 +36,13 @@ export const AdkMainLoopAgent: AgentDefinition<typeof AdkMainLoopOutputSchema> =
       },
     },
     outputConfig: {
-      outputName: 'report',
-      description: 'Placeholder description.',
+      outputName: 'result',
+      description: 'The final result of the main loop agent.',
       schema: AdkMainLoopOutputSchema,
     },
     processOutput: (output) => JSON.stringify(output, null, 2),
     toolConfig: {
-      tools: [], // Placeholder tools
+      tools: Object.values(toolNames),
     },
     promptConfig: {
       query: `\${objective}`,
