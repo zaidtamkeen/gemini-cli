@@ -2070,7 +2070,7 @@ describe('loadCliConfig model selection', () => {
       argv,
     );
 
-    expect(config.getModel()).toBe('auto');
+    expect(config.getModel()).toBe(DEFAULT_GEMINI_MODEL);
   });
 
   it('always prefers model from argvs', async () => {
@@ -2506,7 +2506,7 @@ describe('loadCliConfig useRipgrep', () => {
         'test-session',
         argv,
       );
-      expect(config.getUseModelRouter()).toBe(true);
+      expect(config.getUseModelRouter()).toBe(false);
     });
 
     it('should be true when useModelRouter is set to true in settings', async () => {
