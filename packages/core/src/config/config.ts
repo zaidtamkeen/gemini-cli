@@ -278,7 +278,6 @@ export interface ConfigParameters {
   policyEngineConfig?: PolicyEngineConfig;
   output?: OutputSettings;
   useModelRouter?: boolean;
-  disableModelRouterForAuth?: AuthType[];
   enableMessageBusIntegration?: boolean;
   codebaseInvestigatorSettings?: CodebaseInvestigatorSettings;
   continueOnFailedApiCall?: boolean;
@@ -377,7 +376,6 @@ export class Config {
   private readonly outputSettings: OutputSettings;
   private useModelRouter: boolean;
   private readonly initialUseModelRouter: boolean;
-  private readonly disableModelRouterForAuth?: AuthType[];
   private readonly enableMessageBusIntegration: boolean;
   private readonly codebaseInvestigatorSettings: CodebaseInvestigatorSettings;
   private readonly continueOnFailedApiCall: boolean;
@@ -475,9 +473,6 @@ export class Config {
     this.useWriteTodos = params.useWriteTodos ?? false;
     this.initialUseModelRouter = params.useModelRouter ?? false;
     this.useModelRouter = this.initialUseModelRouter;
-    this.disableModelRouterForAuth = params.disableModelRouterForAuth ?? [
-      AuthType.LOGIN_WITH_GOOGLE,
-    ];
     this.enableMessageBusIntegration =
       params.enableMessageBusIntegration ?? false;
     this.codebaseInvestigatorSettings = {
