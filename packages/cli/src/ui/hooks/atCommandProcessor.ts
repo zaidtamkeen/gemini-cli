@@ -6,16 +6,14 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { PartListUnion, PartUnion } from '@google/genai';
-import type { AnyToolInvocation, Config } from '@google/gemini-cli-core';
+import type { PartListUnion } from '@google/genai';
+import type { Config } from '@google/gemini-cli-core';
 import {
   debugLogger,
   getErrorMessage,
   isNodeError,
   unescapePath,
 } from '@google/gemini-cli-core';
-import type { HistoryItem, IndividualToolCallDisplay } from '../types.js';
-import { ToolCallStatus } from '../types.js';
 import type { UseHistoryManagerReturn } from './useHistoryManager.js';
 
 interface HandleAtCommandParams {
@@ -113,12 +111,10 @@ function parseAllAtCommands(query: string): AtCommandPart[] {
 
 /**
  * Processes user input potentially containing one or more '@<path>' commands.
- * If found, it attempts to read the specified files/directories using the
- * 'read_many_files' tool. The user query is modified to include resolved paths,
- * and the content of the files is appended in a structured block.
+ * Replaces the '@<path>' with the absolute path of the referenced file or directory.
  *
  * @returns An object indicating whether the main hook should proceed with an
- *          LLM call and the processed query parts (including file content).
+ *          LLM call and the processed query parts.
  */
 export async function handleAtCommand({
   query,
@@ -142,9 +138,7 @@ export async function handleAtCommand({
 
   const respectFileIgnore = config.getFileFilteringOptions();
 
-  const pathSpecsToRead: string[] = [];
-  const atPathToResolvedSpecMap = new Map<string, string>();
-  const contentLabelsForDisplay: string[] = [];
+  const atPathToResolvedPathMap = new Map<string, string>();
   const ignoredByReason: Record<string, string[]> = {
     git: [],
     gemini: [],
@@ -152,16 +146,7 @@ export async function handleAtCommand({
   };
 
   const toolRegistry = config.getToolRegistry();
-  const readManyFilesTool = toolRegistry.getTool('read_many_files');
   const globTool = toolRegistry.getTool('glob');
-
-  if (!readManyFilesTool) {
-    addItem(
-      { type: 'error', text: 'Error: read_many_files tool not found.' },
-      userMessageTimestamp,
-    );
-    return { processedQuery: null, shouldProceed: false };
-  }
 
   for (const atPathPart of atPathCommandParts) {
     const originalAtPath = atPathPart.content; // e.g., "@file.txt" or "@"
@@ -175,8 +160,6 @@ export async function handleAtCommand({
 
     const pathName = originalAtPath.substring(1);
     if (!pathName) {
-      // This case should ideally not be hit if parseAllAtCommands ensures content after @
-      // but as a safeguard:
       addItem(
         {
           type: 'error',
@@ -184,13 +167,10 @@ export async function handleAtCommand({
         },
         userMessageTimestamp,
       );
-      // Decide if this is a fatal error for the whole command or just skip this @ part
-      // For now, let's be strict and fail the command if one @path is malformed.
       return { processedQuery: null, shouldProceed: false };
     }
 
     // Check if path should be ignored based on filtering options
-
     const workspaceContext = config.getWorkspaceContext();
     if (!workspaceContext.isPathWithinWorkspace(pathName)) {
       onDebugMessage(
@@ -227,20 +207,14 @@ export async function handleAtCommand({
     }
 
     for (const dir of config.getWorkspaceContext().getDirectories()) {
-      let currentPathSpec = pathName;
+      let resolvedAbsolutePath: string | undefined;
       let resolvedSuccessfully = false;
       try {
         const absolutePath = path.resolve(dir, pathName);
-        const stats = await fs.stat(absolutePath);
-        if (stats.isDirectory()) {
-          currentPathSpec =
-            pathName + (pathName.endsWith(path.sep) ? `**` : `/**`);
-          onDebugMessage(
-            `Path ${pathName} resolved to directory, using glob: ${currentPathSpec}`,
-          );
-        } else {
-          onDebugMessage(`Path ${pathName} resolved to file: ${absolutePath}`);
-        }
+        await fs.stat(absolutePath);
+        // It exists.
+        resolvedAbsolutePath = absolutePath;
+        onDebugMessage(`Path ${pathName} resolved to: ${absolutePath}`);
         resolvedSuccessfully = true;
       } catch (error) {
         if (isNodeError(error) && error.code === 'ENOENT') {
@@ -265,9 +239,9 @@ export async function handleAtCommand({
                 const lines = globResult.llmContent.split('\n');
                 if (lines.length > 1 && lines[1]) {
                   const firstMatchAbsolute = lines[1].trim();
-                  currentPathSpec = path.relative(dir, firstMatchAbsolute);
+                  resolvedAbsolutePath = firstMatchAbsolute;
                   onDebugMessage(
-                    `Glob search for ${pathName} found ${firstMatchAbsolute}, using relative path: ${currentPathSpec}`,
+                    `Glob search for ${pathName} found ${firstMatchAbsolute}`,
                   );
                   resolvedSuccessfully = true;
                 } else {
@@ -302,10 +276,8 @@ export async function handleAtCommand({
           );
         }
       }
-      if (resolvedSuccessfully) {
-        pathSpecsToRead.push(currentPathSpec);
-        atPathToResolvedSpecMap.set(originalAtPath, currentPathSpec);
-        contentLabelsForDisplay.push(pathName);
+      if (resolvedSuccessfully && resolvedAbsolutePath) {
+        atPathToResolvedPathMap.set(originalAtPath, resolvedAbsolutePath);
         break;
       }
     }
@@ -319,7 +291,7 @@ export async function handleAtCommand({
       initialQueryText += part.content;
     } else {
       // type === 'atPath'
-      const resolvedSpec = atPathToResolvedSpecMap.get(part.content);
+      const resolvedPath = atPathToResolvedPathMap.get(part.content);
       if (
         i > 0 &&
         initialQueryText.length > 0 &&
@@ -330,16 +302,15 @@ export async function handleAtCommand({
         if (
           prevPart.type === 'text' ||
           (prevPart.type === 'atPath' &&
-            atPathToResolvedSpecMap.has(prevPart.content))
+            atPathToResolvedPathMap.has(prevPart.content))
         ) {
           initialQueryText += ' ';
         }
       }
-      if (resolvedSpec) {
-        initialQueryText += `@${resolvedSpec}`;
+      if (resolvedPath) {
+        initialQueryText += resolvedPath;
       } else {
-        // If not resolved for reading (e.g. lone @ or invalid path that was skipped),
-        // add the original @-string back, ensuring spacing if it's not the first element.
+        // If not resolved, add the original @-string back
         if (
           i > 0 &&
           initialQueryText.length > 0 &&
@@ -377,105 +348,8 @@ export async function handleAtCommand({
     onDebugMessage(message);
   }
 
-  // Fallback for lone "@" or completely invalid @-commands resulting in empty initialQueryText
-  if (pathSpecsToRead.length === 0) {
-    onDebugMessage('No valid file paths found in @ commands to read.');
-    if (initialQueryText === '@' && query.trim() === '@') {
-      // If the only thing was a lone @, pass original query (which might have spaces)
-      return { processedQuery: [{ text: query }], shouldProceed: true };
-    } else if (!initialQueryText && query) {
-      // If all @-commands were invalid and no surrounding text, pass original query
-      return { processedQuery: [{ text: query }], shouldProceed: true };
-    }
-    // Otherwise, proceed with the (potentially modified) query text that doesn't involve file reading
-    return {
-      processedQuery: [{ text: initialQueryText || query }],
-      shouldProceed: true,
-    };
-  }
-
-  const processedQueryParts: PartUnion[] = [{ text: initialQueryText }];
-
-  const toolArgs = {
-    paths: pathSpecsToRead,
-    file_filtering_options: {
-      respect_git_ignore: respectFileIgnore.respectGitIgnore,
-      respect_gemini_ignore: respectFileIgnore.respectGeminiIgnore,
-    },
-    // Use configuration setting
+  return {
+    processedQuery: [{ text: initialQueryText || query }],
+    shouldProceed: true,
   };
-  let toolCallDisplay: IndividualToolCallDisplay;
-
-  let invocation: AnyToolInvocation | undefined = undefined;
-  try {
-    invocation = readManyFilesTool.build(toolArgs);
-    const result = await invocation.execute(signal);
-    toolCallDisplay = {
-      callId: `client-read-${userMessageTimestamp}`,
-      name: readManyFilesTool.displayName,
-      description: invocation.getDescription(),
-      status: ToolCallStatus.Success,
-      resultDisplay:
-        result.returnDisplay ||
-        `Successfully read: ${contentLabelsForDisplay.join(', ')}`,
-      confirmationDetails: undefined,
-    };
-
-    if (Array.isArray(result.llmContent)) {
-      const fileContentRegex = /^--- (.*?) ---\n\n([\s\S]*?)\n\n$/;
-      processedQueryParts.push({
-        text: '\n--- Content from referenced files ---',
-      });
-      for (const part of result.llmContent) {
-        if (typeof part === 'string') {
-          const match = fileContentRegex.exec(part);
-          if (match) {
-            const filePathSpecInContent = match[1]; // This is a resolved pathSpec
-            const fileActualContent = match[2].trim();
-            processedQueryParts.push({
-              text: `\nContent from @${filePathSpecInContent}:\n`,
-            });
-            processedQueryParts.push({ text: fileActualContent });
-          } else {
-            processedQueryParts.push({ text: part });
-          }
-        } else {
-          // part is a Part object.
-          processedQueryParts.push(part);
-        }
-      }
-    } else {
-      onDebugMessage(
-        'read_many_files tool returned no content or empty content.',
-      );
-    }
-
-    addItem(
-      { type: 'tool_group', tools: [toolCallDisplay] } as Omit<
-        HistoryItem,
-        'id'
-      >,
-      userMessageTimestamp,
-    );
-    return { processedQuery: processedQueryParts, shouldProceed: true };
-  } catch (error: unknown) {
-    toolCallDisplay = {
-      callId: `client-read-${userMessageTimestamp}`,
-      name: readManyFilesTool.displayName,
-      description:
-        invocation?.getDescription() ??
-        'Error attempting to execute tool to read files',
-      status: ToolCallStatus.Error,
-      resultDisplay: `Error reading files (${contentLabelsForDisplay.join(', ')}): ${getErrorMessage(error)}`,
-      confirmationDetails: undefined,
-    };
-    addItem(
-      { type: 'tool_group', tools: [toolCallDisplay] } as Omit<
-        HistoryItem,
-        'id'
-      >,
-      userMessageTimestamp,
-    );
-    return { processedQuery: null, shouldProceed: false };
-  }
 }
