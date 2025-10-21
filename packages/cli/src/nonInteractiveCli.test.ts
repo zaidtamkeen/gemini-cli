@@ -262,55 +262,48 @@ describe('runNonInteractive', () => {
     expect(processStdoutSpy).toHaveBeenCalledWith('\n');
   });
 
-  it('should write a newline between multiple tool call turns', async () => {
-    const toolCallEvent1: ServerGeminiStreamEvent = {
+  it('should write a single newline between sequential text outputs from the model', async () => {
+    // This test simulates a multi-turn conversation to ensure that a single newline
+    // is printed between each block of text output from the model.
+
+    // 1. Define the tool requests that the model will ask the CLI to run.
+    const toolCallEvent: ServerGeminiStreamEvent = {
       type: GeminiEventType.ToolCallRequest,
       value: {
-        callId: 'tool-1',
-        name: 'testTool1',
-        args: {},
-        isClientInitiated: false,
-        prompt_id: 'prompt-id-multi',
-      },
-    };
-    const toolCallEvent2: ServerGeminiStreamEvent = {
-      type: GeminiEventType.ToolCallRequest,
-      value: {
-        callId: 'tool-2',
-        name: 'testTool2',
+        callId: 'mock-tool',
+        name: 'mockTool',
         args: {},
         isClientInitiated: false,
         prompt_id: 'prompt-id-multi',
       },
     };
 
-    // Mock executeToolCall to return different responses based on the tool name
-    mockCoreExecuteToolCall
-      .mockResolvedValueOnce({
-        status: 'success',
-        request: toolCallEvent1.value,
-        tool: {} as AnyDeclarativeTool,
-        invocation: {} as AnyToolInvocation,
-        response: {
-          responseParts: [{ text: 'Response from tool 1' }],
-          callId: 'tool-1',
-        },
-      })
-      .mockResolvedValueOnce({
-        status: 'success',
-        request: toolCallEvent2.value,
-        tool: {} as AnyDeclarativeTool,
-        invocation: {} as AnyToolInvocation,
-        response: {
-          responseParts: [{ text: 'Response from tool 2' }],
-          callId: 'tool-2',
-        },
-      });
+    // 2. Mock the execution of the tools. We just need them to succeed.
+    mockCoreExecuteToolCall.mockResolvedValue({
+      status: 'success',
+      request: toolCallEvent.value, // This is generic enough for both calls
+      tool: {} as AnyDeclarativeTool,
+      invocation: {} as AnyToolInvocation,
+      response: {
+        responseParts: [],
+        callId: 'mock-tool',
+      },
+    });
 
-    const firstCallEvents: ServerGeminiStreamEvent[] = [toolCallEvent1];
-    const secondCallEvents: ServerGeminiStreamEvent[] = [toolCallEvent2];
-    const thirdCallEvents: ServerGeminiStreamEvent[] = [
-      { type: GeminiEventType.Content, value: 'Final answer' },
+    // 3. Define the sequence of events streamed from the mock model.
+    // Turn 1: Model outputs text, then requests a tool call.
+    const modelTurn1: ServerGeminiStreamEvent[] = [
+      { type: GeminiEventType.Content, value: 'Use mock tool' },
+      toolCallEvent,
+    ];
+    // Turn 2: Model outputs more text, then requests another tool call.
+    const modelTurn2: ServerGeminiStreamEvent[] = [
+      { type: GeminiEventType.Content, value: 'Use mock tool again' },
+      toolCallEvent,
+    ];
+    // Turn 3: Model outputs a final answer.
+    const modelTurn3: ServerGeminiStreamEvent[] = [
+      { type: GeminiEventType.Content, value: 'Finished.' },
       {
         type: GeminiEventType.Finished,
         value: { reason: undefined, usageMetadata: { totalTokenCount: 10 } },
@@ -318,28 +311,30 @@ describe('runNonInteractive', () => {
     ];
 
     mockGeminiClient.sendMessageStream
-      .mockReturnValueOnce(createStreamFromEvents(firstCallEvents))
-      .mockReturnValueOnce(createStreamFromEvents(secondCallEvents))
-      .mockReturnValueOnce(createStreamFromEvents(thirdCallEvents));
+      .mockReturnValueOnce(createStreamFromEvents(modelTurn1))
+      .mockReturnValueOnce(createStreamFromEvents(modelTurn2))
+      .mockReturnValueOnce(createStreamFromEvents(modelTurn3));
 
+    // 4. Run the command.
     await runNonInteractive(
       mockConfig,
       mockSettings,
-      'Use multiple tools',
+      'Use mock tool multiple times',
       'prompt-id-multi',
     );
 
-    // Verify that sendMessageStream was called three times
-    expect(mockGeminiClient.sendMessageStream).toHaveBeenCalledTimes(3);
+    // 5. Verify the output.
+    // The rendered output should contain the text from each turn, separated by a
+    // single newline, with a final newline at the end.
+    const renderedOutput = processStdoutSpy.mock.calls
+      .map((call) => call[0])
+      .join('');
+    expect(renderedOutput).toBe(
+      'Use mock tool\nUse mock tool again\nFinished.\n',
+    );
 
-    // Count how many times the newline was written
-    const newlineCalls = processStdoutSpy.mock.calls.filter(
-      (call) => call[0] === '\n',
-    ).length;
-
-    // Expect a newline after the first tool turn, a newline after the second,
-    // and a final newline after the text response.
-    expect(newlineCalls).toBe(3);
+    // Also verify the tools were called as expected.
+    expect(mockCoreExecuteToolCall).toHaveBeenCalledTimes(2);
   });
 
   it('should handle error during tool execution and should send error back to the model', async () => {
