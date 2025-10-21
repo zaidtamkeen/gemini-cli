@@ -588,7 +588,6 @@ describe('Server Config (config.ts)', () => {
       const config = new Config({
         ...baseParams,
         useModelRouter: false,
-        disableModelRouterForAuth: [AuthType.USE_GEMINI],
       });
       await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
       expect(config.getUseModelRouter()).toBe(false);
@@ -598,7 +597,6 @@ describe('Server Config (config.ts)', () => {
       const config = new Config({
         ...baseParams,
         useModelRouter: true,
-        disableModelRouterForAuth: [AuthType.USE_GEMINI],
       });
       await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
       expect(config.getUseModelRouter()).toBe(true);
