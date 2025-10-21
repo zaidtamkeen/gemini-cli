@@ -21,8 +21,8 @@
     "start:a2a-server": "CODER_AGENT_PORT=41242 npm run start --workspace @google/gemini-cli-a2a-server",
     "debug": "cross-env DEBUG=1 node --inspect-brk scripts/start.js",
     "deflake": "node scripts/deflake.js",
-    "deflake:test:integration:sandbox:none": "npm run deflake -- --command=\"npm run test:integration:sandbox:none -- --retry=0",
-    "deflake:test:integration:sandbox:docker": "npm run deflake -- --command=\"npm run test:integration:sandbox:docker -- --retry=0",
+    "deflake:test:integration:sandbox:none": "npm run deflake -- --command=\"npm run test:integration:sandbox:none -- --retry=0\"",
+    "deflake:test:integration:sandbox:docker": "npm run deflake -- --command=\"npm run test:integration:sandbox:docker -- --retry=0\"",
     "auth:npm": "npx google-artifactregistry-auth",
     "auth:docker": "gcloud auth configure-docker us-west1-docker.pkg.dev",
     "auth": "npm run auth:npm && npm run auth:docker",
@@ -55,7 +55,9 @@
     "telemetry": "node scripts/telemetry.js",
     "check:lockfile": "node scripts/check-lockfile.js",
     "clean": "node scripts/clean.js",
-    "pre-commit": "node scripts/pre-commit.js"
+    "pre-commit": "node scripts/pre-commit.js",
+    "tsr:check": "tsr 'packages/\\w+/src/index\\.ts' 'integration-tests/.*\\.test\\.ts'",
+    "tsr:write": "tsr --write 'packages/\\w+/src/index\\.ts' 'integration-tests/.*\\.test\\.ts'"
   },
   "overrides": {
     "wrap-ansi": "9.0.2",
@@ -105,6 +107,7 @@
     "react-devtools-core": "^4.28.5",
     "semver": "^7.7.2",
     "strip-ansi": "^7.1.2",
+    "tsr": "^1.3.4",
     "tsx": "^4.20.3",
     "typescript-eslint": "^8.30.1",
     "vitest": "^3.2.4",
