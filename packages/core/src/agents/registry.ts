@@ -4,7 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { Config } from '../config/config.js';
+import {
+  DEFAULT_TEMP,
+  DEFAULT_TOP_P,
+  MAX_TURNS,
+  type Config,
+} from '../config/config.js';
 import type { AgentDefinition } from './types.js';
 import { CodebaseInvestigatorAgent } from './codebase-investigator.js';
 import { type z } from 'zod';
@@ -43,19 +48,24 @@ export class AgentRegistry {
           ...CodebaseInvestigatorAgent.modelConfig,
           model:
             investigatorSettings.model ??
-            CodebaseInvestigatorAgent.modelConfig.model,
+            CodebaseInvestigatorAgent.modelConfig?.model ??
+            this.config.getModel(),
           thinkingBudget:
             investigatorSettings.thinkingBudget ??
-            CodebaseInvestigatorAgent.modelConfig.thinkingBudget,
+            CodebaseInvestigatorAgent.modelConfig?.thinkingBudget ??
+            -1,
+          temp: CodebaseInvestigatorAgent.modelConfig?.temp ?? DEFAULT_TEMP,
+          top_p: CodebaseInvestigatorAgent.modelConfig?.top_p ?? DEFAULT_TOP_P,
         },
         runConfig: {
           ...CodebaseInvestigatorAgent.runConfig,
           max_time_minutes:
             investigatorSettings.maxTimeMinutes ??
-            CodebaseInvestigatorAgent.runConfig.max_time_minutes,
+            CodebaseInvestigatorAgent.runConfig?.max_time_minutes,
           max_turns:
             investigatorSettings.maxNumTurns ??
-            CodebaseInvestigatorAgent.runConfig.max_turns,
+            CodebaseInvestigatorAgent.runConfig?.max_turns ??
+            MAX_TURNS,
         },
       };
       this.registerAgent(agentDef);

@@ -168,6 +168,10 @@ export {
 export const DEFAULT_TRUNCATE_TOOL_OUTPUT_THRESHOLD = 4_000_000;
 export const DEFAULT_TRUNCATE_TOOL_OUTPUT_LINES = 1000;
 
+export const DEFAULT_TEMP = 0;
+export const DEFAULT_TOP_P = 1;
+export const MAX_TURNS = 100;
+
 export class MCPServerConfig {
   constructor(
     // For stdio transport

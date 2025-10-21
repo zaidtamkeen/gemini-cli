@@ -164,6 +164,13 @@ export class AgentExecutor<TOutput extends z.ZodTypeAny>
         'Please enable adkMode in your settings.json to use subagents with subagents.',
       );
     }
+
+    if (!definition.modelConfig || !definition.runConfig) {
+      throw new Error(
+        'Please provide a modelConfig and runConfig for the agent when not running in adkMode.',
+      );
+    }
+
     this.definition = definition;
     this.runtimeContext = runtimeContext;
     this.toolRegistry = toolRegistry;
@@ -295,6 +302,10 @@ export class AgentExecutor<TOutput extends z.ZodTypeAny>
       },
     };
 
+    if (!this.definition.modelConfig?.model) {
+      throw new Error('Model configuration is missing.');
+    }
+
     const responseStream = await chat.sendMessageStream(
       this.definition.modelConfig.model,
       messageParams,
@@ -362,11 +373,11 @@ export class AgentExecutor<TOutput extends z.ZodTypeAny>
 
     try {
       const generationConfig: GenerateContentConfig = {
-        temperature: modelConfig.temp,
-        topP: modelConfig.top_p,
+        temperature: modelConfig?.temp,
+        topP: modelConfig?.top_p,
         thinkingConfig: {
           includeThoughts: true,
-          thinkingBudget: modelConfig.thinkingBudget ?? -1,
+          thinkingBudget: modelConfig?.thinkingBudget ?? -1,
         },
       };
 
@@ -737,12 +748,12 @@ export class AgentExecutor<TOutput extends z.ZodTypeAny>
   ): AgentTerminateMode | null {
     const { runConfig } = this.definition;
 
-    if (runConfig.max_turns && turnCounter >= runConfig.max_turns) {
+    if (runConfig?.max_turns && turnCounter >= runConfig.max_turns) {
       return AgentTerminateMode.MAX_TURNS;
     }
 
     const elapsedMinutes = (Date.now() - startTime) / (1000 * 60);
-    if (elapsedMinutes >= runConfig.max_time_minutes) {
+    if (elapsedMinutes >= (runConfig?.max_time_minutes ?? Infinity)) {
       return AgentTerminateMode.TIMEOUT;
     }
 

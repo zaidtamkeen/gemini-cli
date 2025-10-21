@@ -18,7 +18,12 @@ import {
 import type { ServerGeminiStreamEvent, ChatCompressionInfo } from './turn.js';
 import { CompressionStatus } from './turn.js';
 import { Turn, GeminiEventType } from './turn.js';
-import type { Config } from '../config/config.js';
+import {
+  DEFAULT_TEMP,
+  DEFAULT_TOP_P,
+  MAX_TURNS,
+  type Config,
+} from '../config/config.js';
 import { getCoreSystemPrompt, getCompressionPrompt } from './prompts.js';
 import { getResponseText } from '../utils/partUtils.js';
 import { checkNextSpeaker } from '../utils/nextSpeakerChecker.js';
@@ -112,8 +117,6 @@ export function findCompressSplitPoint(
   return lastSplitPoint;
 }
 
-const MAX_TURNS = 100;
-
 /**
  * Threshold for compression token count as a fraction of the model's token limit.
  * If the chat history exceeds this threshold, it will be compressed.
@@ -129,8 +132,8 @@ const COMPRESSION_PRESERVE_THRESHOLD = 0.3;
 export class GeminiClient {
   private chat?: GeminiChat;
   private readonly generateContentConfig: GenerateContentConfig = {
-    temperature: 0,
-    topP: 1,
+    temperature: DEFAULT_TEMP,
+    topP: DEFAULT_TOP_P,
   };
   private sessionTurnCount = 0;
 

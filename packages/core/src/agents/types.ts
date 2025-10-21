@@ -9,6 +9,7 @@
  */
 
 import type { Content, FunctionDeclaration } from '@google/genai';
+import type { Config } from '../config/config.js';
 import type { AnyDeclarativeTool } from '../tools/tools.js';
 import { type z } from 'zod';
 
@@ -59,8 +60,8 @@ export interface AgentDefinition<TOutput extends z.ZodTypeAny = z.ZodUnknown> {
   displayName?: string;
   description: string;
   promptConfig: PromptConfig;
-  modelConfig: ModelConfig;
-  runConfig: RunConfig;
+  modelConfig?: ModelConfig;
+  runConfig?: RunConfig;
   toolConfig?: ToolConfig;
   outputConfig?: OutputConfig<TOutput>;
   inputConfig: InputConfig;
@@ -82,9 +83,10 @@ export interface AgentDefinition<TOutput extends z.ZodTypeAny = z.ZodUnknown> {
  */
 export interface PromptConfig {
   /**
-   * A single system prompt string. Supports templating using `${input_name}` syntax.
+   * A single system prompt string or a function that generates the prompt.
+   * Supports templating using `${input_name}` syntax.
    */
-  systemPrompt?: string;
+  systemPrompt?: string | ((config: Config) => string);
   /**
    * An array of user/model content pairs for few-shot prompting.
    */
@@ -167,7 +169,7 @@ export interface ModelConfig {
  */
 export interface RunConfig {
   /** The maximum execution time for the agent in minutes. */
-  max_time_minutes: number;
+  max_time_minutes?: number;
   /** The maximum number of conversational turns. */
   max_turns?: number;
 }

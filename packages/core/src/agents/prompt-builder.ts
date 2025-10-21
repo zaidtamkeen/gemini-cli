@@ -22,7 +22,12 @@ export async function buildSystemPrompt<TOutput extends z.ZodTypeAny>(
     return '';
   }
 
-  // Inject user inputs into the prompt template.
+  // If the system prompt is a function, send through the config and return.
+  if (typeof promptConfig.systemPrompt === 'function') {
+    return promptConfig.systemPrompt(runtimeContext);
+  }
+
+  // Else, inject user inputs into the prompt template.
   let finalPrompt = templateString(promptConfig.systemPrompt, inputs);
 
   // Append environment context (CWD and folder structure).

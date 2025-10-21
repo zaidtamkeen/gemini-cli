@@ -21,7 +21,7 @@ import {
   type Event,
 } from '@google/adk';
 import type { z } from 'zod';
-import type { Config } from '../config/config.js';
+import { DEFAULT_TEMP, DEFAULT_TOP_P, type Config } from '../config/config.js';
 import type { Part, FunctionDeclaration, Schema } from '@google/genai';
 import { BaseTool as AdkBaseTool, type RunAsyncToolRequest } from '@google/adk';
 import { convertInputConfigToGenaiSchema } from './schema-converter.js';
@@ -85,15 +85,15 @@ async function createAdkAgent<TOutput extends z.ZodTypeAny>(
     name,
     description,
     instruction: await buildSystemPrompt(inputs, definition, config),
-    model: modelConfig.model,
+    model: modelConfig?.model || config.getModel(),
     tools,
     subAgents: subagents,
     generateContentConfig: {
-      temperature: modelConfig.temp,
-      topP: modelConfig.top_p,
+      temperature: modelConfig?.temp ?? DEFAULT_TEMP,
+      topP: modelConfig?.top_p ?? DEFAULT_TOP_P,
       thinkingConfig: {
         includeThoughts: true,
-        thinkingBudget: modelConfig.thinkingBudget ?? -1,
+        thinkingBudget: modelConfig?.thinkingBudget ?? -1,
       },
     },
     inputSchema: convertInputConfigToGenaiSchema(definition.inputConfig),
