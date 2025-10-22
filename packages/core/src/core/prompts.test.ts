@@ -44,6 +44,7 @@ describe('Core System Prompt (prompts.ts)', () => {
     vi.stubEnv('GEMINI_SYSTEM_MD', undefined);
     vi.stubEnv('GEMINI_WRITE_SYSTEM_MD', undefined);
     mockConfig = {
+      getAdkMode: vi.fn().mockReturnValue(false),
       getToolRegistry: vi.fn().mockReturnValue({
         getAllToolNames: vi.fn().mockReturnValue([]),
       }),
@@ -145,6 +146,7 @@ describe('Core System Prompt (prompts.ts)', () => {
   describe('with CodebaseInvestigator enabled', () => {
     beforeEach(() => {
       mockConfig = {
+        getAdkMode: vi.fn().mockReturnValue(false),
         getToolRegistry: vi.fn().mockReturnValue({
           getAllToolNames: vi
             .fn()

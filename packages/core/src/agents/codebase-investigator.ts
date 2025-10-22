@@ -15,7 +15,7 @@ import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
 import { z } from 'zod';
 
 // Define a type that matches the outputConfig schema for type safety.
-const CodebaseInvestigationReportSchema = z.object({
+export const CodebaseInvestigationReportSchema = z.object({
   SummaryOfFindings: z
     .string()
     .describe(

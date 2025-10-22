@@ -302,6 +302,9 @@ describe('Gemini Client (client.ts)', () => {
       getIdeModeFeature: vi.fn().mockReturnValue(false),
       getIdeMode: vi.fn().mockReturnValue(true),
       getDebugMode: vi.fn().mockReturnValue(false),
+      getAdkMode: vi.fn().mockReturnValue(false),
+      getEnableMessageBusIntegration: vi.fn().mockReturnValue(false),
+      getMessageBus: vi.fn().mockReturnValue(undefined),
       getWorkspaceContext: vi.fn().mockReturnValue({
         getDirectories: vi.fn().mockReturnValue(['/test/dir']),
       }),

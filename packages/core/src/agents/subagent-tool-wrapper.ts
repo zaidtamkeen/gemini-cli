@@ -20,10 +20,11 @@ import type { MessageBus } from '../confirmation-bus/message-bus.js';
  * A tool wrapper that dynamically exposes a subagent as a standard,
  * strongly-typed `DeclarativeTool`.
  */
-export class SubagentToolWrapper extends BaseDeclarativeTool<
-  AgentInputs,
-  ToolResult
-> {
+import type { z } from 'zod';
+
+export class SubagentToolWrapper<
+  TOutput extends z.ZodTypeAny,
+> extends BaseDeclarativeTool<AgentInputs, ToolResult> {
   /**
    * Constructs the tool wrapper.
    *
@@ -35,7 +36,7 @@ export class SubagentToolWrapper extends BaseDeclarativeTool<
    * @param messageBus Optional message bus for policy enforcement.
    */
   constructor(
-    private readonly definition: AgentDefinition,
+    private readonly definition: AgentDefinition<TOutput>,
     private readonly config: Config,
     messageBus?: MessageBus,
   ) {

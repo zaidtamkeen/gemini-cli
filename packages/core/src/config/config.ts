@@ -168,8 +168,6 @@ export {
 export const DEFAULT_TRUNCATE_TOOL_OUTPUT_THRESHOLD = 4_000_000;
 export const DEFAULT_TRUNCATE_TOOL_OUTPUT_LINES = 1000;
 
-export const DEFAULT_TEMP = 0;
-export const DEFAULT_TOP_P = 1;
 export const MAX_TURNS = 100;
 
 export class MCPServerConfig {
@@ -1187,39 +1185,33 @@ export class Config {
     }
 
     // Register Subagents as Tools
-    if (this.getCodebaseInvestigatorSettings().enabled) {
-      const definition = this.agentRegistry.getDefinition(
-        'codebase_investigator',
-      );
-      if (definition) {
-        // We must respect the main allowed/exclude lists for agents too.
-        const excludeTools = this.getExcludeTools() || [];
-        const allowedTools = this.getAllowedTools();
+    for (const definition of this.agentRegistry.getAllDefinitions()) {
+      // We must respect the main allowed/exclude lists for agents too.
+      const excludeTools = this.getExcludeTools() || [];
+      const allowedTools = this.getAllowedTools();
 
-        const isExcluded = excludeTools.includes(definition.name);
-        const isAllowed =
-          !allowedTools || allowedTools.includes(definition.name);
+      const isExcluded = excludeTools.includes(definition.name);
+      const isAllowed = !allowedTools || allowedTools.includes(definition.name);
 
-        if (isAllowed && !isExcluded) {
-          try {
-            const messageBusEnabled = this.getEnableMessageBusIntegration();
-            const wrapper = new SubagentToolWrapper(
-              definition,
-              this,
-              messageBusEnabled ? this.getMessageBus() : undefined,
-            );
-            registry.registerTool(wrapper);
-          } catch (error) {
-            console.error(
-              `Failed to wrap agent '${definition.name}' as a tool:`,
-              error,
-            );
-          }
-        } else if (this.getDebugMode()) {
-          console.log(
-            `[Config] Skipping registration of agent '${definition.name}' due to allow/exclude configuration.`,
+      if (isAllowed && !isExcluded) {
+        try {
+          const messageBusEnabled = this.getEnableMessageBusIntegration();
+          const wrapper = new SubagentToolWrapper(
+            definition,
+            this,
+            messageBusEnabled ? this.getMessageBus() : undefined,
+          );
+          registry.registerTool(wrapper);
+        } catch (error) {
+          console.error(
+            `Failed to wrap agent '${definition.name}' as a tool:`,
+            error,
           );
         }
+      } else if (this.getDebugMode()) {
+        console.log(
+          `[Config] Skipping registration of agent '${definition.name}' due to allow/exclude configuration.`,
+        );
       }
     }
 

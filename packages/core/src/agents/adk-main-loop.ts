@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { getCoreSystemPrompt } from '../core/prompts.js';
 import type { Config } from '../config/config.js';
 import * as toolNames from '../tools/tool-names.js';
+import { CodebaseInvestigatorAgent } from './codebase-investigator.js';
 
 const AdkMainLoopOutputSchema = z.object({
   WorkDone: z.string().describe('A detailed summary of all steps taken.'),
@@ -43,6 +44,9 @@ export const AdkMainLoopAgent: AgentDefinition<typeof AdkMainLoopOutputSchema> =
     processOutput: (output) => JSON.stringify(output, null, 2),
     toolConfig: {
       tools: Object.values(toolNames),
+    },
+    subagentConfig: {
+      subagents: [CodebaseInvestigatorAgent],
     },
     promptConfig: {
       query: `\${objective}`,

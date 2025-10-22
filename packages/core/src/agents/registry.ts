@@ -4,15 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
-  DEFAULT_TEMP,
-  DEFAULT_TOP_P,
-  MAX_TURNS,
-  type Config,
-} from '../config/config.js';
+import { MAX_TURNS, type Config } from '../config/config.js';
 import type { AgentDefinition } from './types.js';
 import { CodebaseInvestigatorAgent } from './codebase-investigator.js';
+import { DEFAULT_TEMP, DEFAULT_TOP_P } from '../config/models.js';
 import { type z } from 'zod';
+import { AdkMainLoopAgent } from './adk-main-loop.js';
 
 /**
  * Manages the discovery, loading, validation, and registration of
@@ -69,6 +66,10 @@ export class AgentRegistry {
         },
       };
       this.registerAgent(agentDef);
+    }
+
+    if (this.config.getAdkMode()) {
+      this.registerAgent(AdkMainLoopAgent);
     }
   }
 

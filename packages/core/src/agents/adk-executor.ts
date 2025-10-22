@@ -21,7 +21,12 @@ import {
   type Event,
 } from '@google/adk';
 import type { z } from 'zod';
-import { DEFAULT_TEMP, DEFAULT_TOP_P, type Config } from '../config/config.js';
+import { type Config } from '../config/config.js';
+import {
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_TEMP,
+  DEFAULT_TOP_P,
+} from '../config/models.js';
 import type { Part, FunctionDeclaration, Schema } from '@google/genai';
 import { BaseTool as AdkBaseTool, type RunAsyncToolRequest } from '@google/adk';
 import { convertInputConfigToGenaiSchema } from './schema-converter.js';
@@ -76,11 +81,14 @@ async function createAdkAgent<TOutput extends z.ZodTypeAny>(
     );
   }
 
+  const model =
+    modelConfig?.model ||
+    (config.getModel() === 'auto' ? DEFAULT_GEMINI_MODEL : config.getModel());
   return new LlmAgent({
     name,
     description,
     instruction: await buildSystemPrompt(inputs, definition, config),
-    model: modelConfig?.model || config.getModel(),
+    model,
     tools,
     subAgents: subagents,
     generateContentConfig: {

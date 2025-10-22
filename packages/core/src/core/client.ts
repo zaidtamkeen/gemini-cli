@@ -18,12 +18,7 @@ import {
 import type { ServerGeminiStreamEvent, ChatCompressionInfo } from './turn.js';
 import { CompressionStatus } from './turn.js';
 import { Turn, GeminiEventType } from './turn.js';
-import {
-  DEFAULT_TEMP,
-  DEFAULT_TOP_P,
-  MAX_TURNS,
-  type Config,
-} from '../config/config.js';
+import { MAX_TURNS, type Config } from '../config/config.js';
 import { getCoreSystemPrompt, getCompressionPrompt } from './prompts.js';
 import { getResponseText } from '../utils/partUtils.js';
 import { checkNextSpeaker } from '../utils/nextSpeakerChecker.js';
@@ -40,6 +35,8 @@ import {
   DEFAULT_GEMINI_MODEL_AUTO,
   DEFAULT_THINKING_MODE,
   getEffectiveModel,
+  DEFAULT_TEMP,
+  DEFAULT_TOP_P,
 } from '../config/models.js';
 import { LoopDetectionService } from '../services/loopDetectionService.js';
 import { ideContextStore } from '../ide/ideContext.js';
@@ -57,6 +54,8 @@ import type { IdeContext, File } from '../ide/types.js';
 import { handleFallback } from '../fallback/handler.js';
 import type { RoutingContext } from '../routing/routingStrategy.js';
 import { uiTelemetryService } from '../telemetry/uiTelemetry.js';
+import { SubagentToolWrapper } from '../agents/subagent-tool-wrapper.js';
+import { AdkMainLoopAgent } from '../agents/adk-main-loop.js';
 
 export function isThinkingSupported(model: string) {
   return model.startsWith('gemini-2.5') || model === DEFAULT_GEMINI_MODEL_AUTO;
@@ -233,7 +232,20 @@ export class GeminiClient {
 
     const toolRegistry = this.config.getToolRegistry();
     const toolDeclarations = toolRegistry.getFunctionDeclarations();
-    const tools: Tool[] = [{ functionDeclarations: toolDeclarations }];
+
+    let tools: Tool[];
+    if (this.config.getAdkMode()) {
+      // Only pass in the adk-main-loop tool
+      const messageBusEnabled = this.config.getEnableMessageBusIntegration();
+      const wrapper = new SubagentToolWrapper(
+        AdkMainLoopAgent,
+        this.config,
+        messageBusEnabled ? this.config.getMessageBus() : undefined,
+      );
+      tools = [{ functionDeclarations: [wrapper.schema] }];
+    } else {
+      tools = [{ functionDeclarations: toolDeclarations }];
+    }
 
     // 1. Get the environment context parts as an array
     const envParts = await getEnvironmentContext(this.config);
@@ -264,6 +276,7 @@ My setup is complete. I will provide my first command in the next turn.
     try {
       const userMemory = this.config.getUserMemory();
       const systemInstruction = getCoreSystemPrompt(this.config, userMemory);
+
       const model = this.config.getModel();
 
       const config: GenerateContentConfig = { ...this.generateContentConfig };

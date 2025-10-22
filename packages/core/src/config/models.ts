@@ -15,6 +15,9 @@ export const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 // Some thinking models do not default to dynamic thinking which is done by a value of -1
 export const DEFAULT_THINKING_MODE = -1;
 
+export const DEFAULT_TEMP = 0;
+export const DEFAULT_TOP_P = 1;
+
 /**
  * Determines the effective model to use, applying fallback logic if necessary.
  *

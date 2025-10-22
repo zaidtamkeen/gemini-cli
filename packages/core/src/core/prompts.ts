@@ -77,6 +77,12 @@ export function getCoreSystemPrompt(
   config: Config,
   userMemory?: string,
 ): string {
+  if (config.getAdkMode()) {
+    return `Please use the adk_main_loop tool to handle all queries.
+    Do not plan or execute any actions other than to call the adk_main_loop
+    tool, which will handle all planning and execution.`;
+  }
+
   // A flag to indicate whether the system prompt override is active.
   let systemMdEnabled = false;
   // The default path for the system prompt file. This can be overridden.
