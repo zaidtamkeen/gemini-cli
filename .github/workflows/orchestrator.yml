@@ -20,7 +20,6 @@ permissions:
   deployments: 'read'
   discussions: 'read'
   issues: 'read'
-  models: 'read'
   pages: 'read'
   repository-projects: 'read'
   id-token: 'write'
