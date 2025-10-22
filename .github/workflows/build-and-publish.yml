@@ -4,16 +4,16 @@ name: 'Build and Publish Bundle'
 on:
   workflow_call:
     outputs:
-      tag:
-        description: 'The tag of the published package'
-        value: '${{ jobs.publish-bundle.outputs.tag }}'
+      version:
+        description: 'The version of the published package'
+        value: '${{ jobs.publish-bundle.outputs.version }}'
 
 jobs:
   publish-bundle:
     name: 'Publish Bundle'
     runs-on: 'gemini-cli-ubuntu-16-core'
     outputs:
-      tag: '${{ steps.get_tag.outputs.tag }}'
+      version: '${{ steps.version.outputs.version }}'
     permissions:
       contents: 'read'
       packages: 'write'
@@ -44,12 +44,18 @@ jobs:
       - name: 'Bundle'
         run: 'npm run bundle'
 
-      - name: 'Get tag'
-        id: 'get_tag'
-        shell: 'bash'
-        env:
-          SHA: 'ci-${{ github.sha }}'
-        run: 'echo "tag=$SHA" >> $GITHUB_OUTPUT'
+      - name: 'Set CI Version'
+        id: 'version'
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          NEW_VERSION="${CURRENT_VERSION}-ci.${{ github.run_number }}.${{ github.sha }}"
+          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          npm version --no-git-tag-version "${NEW_VERSION}"
 
       - name: 'Publish to GitHub Packages'
-        run: 'npm publish --tag="${{ steps.get_tag.outputs.tag }}"'
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            npm publish --tag="pr-${{ github.event.pull_request.number }}"
+          else
+            npm publish --tag="ci"
+          fi

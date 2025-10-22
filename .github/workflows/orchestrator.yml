@@ -35,11 +35,11 @@ jobs:
     needs: 'build-and-publish'
     uses: './.github/workflows/ci.yml'
     with:
-      tag: '${{ needs.build-and-publish.outputs.tag }}'
+      version: '${{ needs.build-and-publish.outputs.version }}'
 
   e2e:
     name: 'E2E Checks'
     needs: 'build-and-publish'
     uses: './.github/workflows/e2e.yml'
     with:
-      tag: '${{ needs.build-and-publish.outputs.tag }}'
+      version: '${{ needs.build-and-publish.outputs.version }}'

@@ -3,8 +3,8 @@ name: 'Testing: CI'
 on:
   workflow_call:
     inputs:
-      tag:
-        description: 'The tag of the published package'
+      version:
+        description: 'The version of the published package'
         required: true
         type: 'string'
 
