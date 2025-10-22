@@ -34,6 +34,7 @@ import {
   type SettingsValue,
   TOGGLE_TYPES,
 } from '../../config/settingsSchema.js';
+import { debugLogger } from '@google/gemini-cli-core';
 
 interface SettingsDialogProps {
   settings: LoadedSettings;
@@ -156,7 +157,7 @@ export function SettingsDialog({
               newValue,
               currentScopeSettings,
             );
-            console.log(
+            debugLogger.log(
               `[DEBUG SettingsDialog] Saving ${key} immediately with value:`,
               newValue,
             );
@@ -201,7 +202,7 @@ export function SettingsDialog({
             setModifiedSettings((prev) => {
               const updated = new Set(prev).add(key);
               const needsRestart = hasRestartRequiredSettings(updated);
-              console.log(
+              debugLogger.log(
                 `[DEBUG SettingsDialog] Modified settings:`,
                 Array.from(updated),
                 'Needs restart:',
