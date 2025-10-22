@@ -1,0 +1,32 @@
+# .github/workflows/pr-checks.yml
+name: 'PR Checks'
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+      - 'release/**'
+  merge_group:
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    name: 'Build and Publish CI Bundle'
+    uses: ./.github/workflows/build-and-publish.yml
+
+  ci:
+    name: 'CI Checks'
+    needs: build-and-publish
+    uses: ./.github/workflows/ci.yml
+    with:
+      tag: ${{ needs.build-and-publish.outputs.tag }}
+
+  e2e:
+    name: 'E2E Checks'
+    needs: build-and-publish
+    uses: ./.github/workflows/e2e.yml
+    with:
+      tag: ${{ needs.build-and-publish.outputs.tag }}

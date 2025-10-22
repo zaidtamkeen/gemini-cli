@@ -1,22 +1,10 @@
-name: 'Testing: CI'
-
 on:
-  push:
-    branches:
-      - 'main'
-      - 'release/**'
-  pull_request:
-    branches:
-      - 'main'
-      - 'release/**'
-  merge_group:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      branch_ref:
-        description: 'Branch to run on'
+      tag:
+        description: 'The tag of the published package'
         required: true
-        default: 'main'
-        type: 'string'
+        type: string
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
@@ -48,7 +36,8 @@ jobs:
   lint:
     name: 'Lint'
     runs-on: 'gemini-cli-ubuntu-16-core'
-    needs: 'merge_queue_skipper'
+    needs:
+      - 'merge_queue_skipper'
     if: "${{needs.merge_queue_skipper.outputs.skip == 'false'}}"
     steps:
       - name: 'Checkout'
@@ -120,22 +109,21 @@ jobs:
           node-version: '${{ matrix.node-version }}'
           cache: 'npm'
 
-      - name: 'Build project'
-        run: 'npm run build'
+      - name: 'Configure npm for GitHub Packages'
+        run: |
+          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
       - name: 'Install dependencies for testing'
-        run: 'npm ci'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
 
       - name: 'Run tests and generate reports'
         env:
           NO_COLOR: true
         run: 'npm run test:ci'
 
-      - name: 'Bundle'
-        run: 'npm run bundle'
-
       - name: 'Smoke test bundle'
-        run: 'node ./bundle/gemini.js --version'
+        run: 'gemini --version'
 
       - name: 'Wait for file system sync'
         run: 'sleep 2'
@@ -188,22 +176,21 @@ jobs:
           node-version: '${{ matrix.node-version }}'
           cache: 'npm'
 
-      - name: 'Build project'
-        run: 'npm run build'
+      - name: 'Configure npm for GitHub Packages'
+        run: |
+          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
       - name: 'Install dependencies for testing'
-        run: 'npm ci'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
 
       - name: 'Run tests and generate reports'
         env:
           NO_COLOR: true
         run: 'npm run test:ci -- --coverage.enabled=false'
 
-      - name: 'Bundle'
-        run: 'npm run bundle'
-
       - name: 'Smoke test bundle'
-        run: 'node ./bundle/gemini.js --version'
+        run: 'gemini --version'
 
       - name: 'Wait for file system sync'
         run: 'sleep 2'
@@ -237,7 +224,8 @@ jobs:
   codeql:
     name: 'CodeQL'
     runs-on: 'gemini-cli-ubuntu-16-core'
-    needs: 'merge_queue_skipper'
+    needs:
+      - 'merge_queue_skipper'
     if: "${{needs.merge_queue_skipper.outputs.skip == 'false'}}"
     permissions:
       actions: 'read'
@@ -260,7 +248,8 @@ jobs:
   # Check for changes in bundle size.
   bundle_size:
     name: 'Check Bundle Size'
-    needs: 'merge_queue_skipper'
+    needs:
+      - 'merge_queue_skipper'
     if: "${{github.event_name == 'pull_request' && needs.merge_queue_skipper.outputs.skip == 'false'}}"
     runs-on: 'gemini-cli-ubuntu-16-core'
     permissions:
@@ -274,6 +263,14 @@ jobs:
           ref: '${{ github.event.inputs.branch_ref || github.ref }}'
           fetch-depth: 1
 
+      - name: 'Configure npm for GitHub Packages'
+        run: |
+          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+
+      - name: 'Install bundle'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
+
       - uses: 'preactjs/compressed-size-action@946a292cd35bd1088e0d7eb92b69d1a8d5b5d76a'
         with:
           repo-token: '${{ secrets.GITHUB_TOKEN }}'
@@ -285,7 +282,8 @@ jobs:
   test_windows:
     name: 'Slow Test - Win'
     runs-on: 'gemini-cli-windows-16-core'
-    needs: 'merge_queue_skipper'
+    needs:
+      - 'merge_queue_skipper'
     if: "${{needs.merge_queue_skipper.outputs.skip == 'false'}}"
     continue-on-error: true
 
@@ -319,17 +317,15 @@ jobs:
           npm config set registry https://registry.npmjs.org/
         shell: 'pwsh'
 
-      - name: 'Install dependencies'
-        run: 'npm ci'
+      - name: 'Configure npm for GitHub Packages'
+        run: |
+          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
         shell: 'pwsh'
 
-      - name: 'Build project'
-        run: 'npm run build'
+      - name: 'Install dependencies'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
         shell: 'pwsh'
-        env:
-          NODE_OPTIONS: '--max-old-space-size=32768 --max-semi-space-size=256'
-          UV_THREADPOOL_SIZE: '32'
-          NODE_ENV: 'production'
 
       - name: 'Run tests and generate reports'
         env:
@@ -341,12 +337,8 @@ jobs:
         run: 'npm run test:ci -- --coverage.enabled=false'
         shell: 'pwsh'
 
-      - name: 'Bundle'
-        run: 'npm run bundle'
-        shell: 'pwsh'
-
       - name: 'Smoke test bundle'
-        run: 'node ./bundle/gemini.js --version'
+        run: 'gemini --version'
         shell: 'pwsh'
 
   ci:

@@ -1,25 +1,10 @@
-name: 'Testing: E2E'
-
 on:
-  push:
-    branches:
-      - 'main'
-  # This will run for PRs from the base repository, providing secrets.
-  pull_request:
-    branches:
-      - 'main'
-      - 'release/**'
-  # This will run for PRs from forks when a label is added.
-  pull_request_target:
-    types: ['labeled']
-  merge_group:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      branch_ref:
-        description: 'Branch to run on'
+      tag:
+        description: 'The tag of the published package'
         required: true
-        default: 'main'
-        type: 'string'
+        type: string
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
@@ -40,7 +25,8 @@ jobs:
 
   e2e_linux:
     name: 'E2E Test (Linux) - ${{ matrix.sandbox }}'
-    needs: 'merge_queue_skipper'
+    needs:
+      - 'merge_queue_skipper'
     if: |
       needs.merge_queue_skipper.outputs.skip == 'false' &&
       (github.event_name == 'push' ||
@@ -83,10 +69,7 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
       - name: 'Install dependencies'
-        run: 'npm ci'
-
-      - name: 'Build project'
-        run: 'npm run build'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
 
       - name: 'Set up Docker'
         if: "matrix.sandbox == 'sandbox:docker'"
@@ -107,7 +90,8 @@ jobs:
 
   e2e_mac:
     name: 'E2E Test (macOS)'
-    needs: 'merge_queue_skipper'
+    needs:
+      - 'merge_queue_skipper'
     if: |
       needs.merge_queue_skipper.outputs.skip == 'false' &&
       (github.event_name == 'push' ||
@@ -141,10 +125,7 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
       - name: 'Install dependencies'
-        run: 'npm ci'
-
-      - name: 'Build project'
-        run: 'npm run build'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
 
       - name: 'Fix rollup optional dependencies on macOS'
         if: "runner.os == 'macOS'"
@@ -161,7 +142,8 @@ jobs:
 
   e2e_windows:
     name: 'Slow E2E - Win'
-    needs: 'merge_queue_skipper'
+    needs:
+      - 'merge_queue_skipper'
     if: |
       needs.merge_queue_skipper.outputs.skip == 'false' &&
       (github.event_name == 'push' ||
@@ -217,11 +199,7 @@ jobs:
         shell: 'pwsh'
 
       - name: 'Install dependencies'
-        run: 'npm ci'
-        shell: 'pwsh'
-
-      - name: 'Build project'
-        run: 'npm run build'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
         shell: 'pwsh'
 
       - name: 'Run E2E tests'

@@ -113,7 +113,6 @@
     "yargs": "^17.7.2"
   },
   "dependencies": {
-    "@google-gemini/gemini-cli": "^0.11.0-nightly.20251021.0e7b3951",
     "@testing-library/dom": "^10.4.1",
     "simple-git": "^3.28.0"
   },
