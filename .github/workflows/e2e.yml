@@ -48,6 +48,11 @@ jobs:
         with:
           ref: '${{ github.event.inputs.branch_ref || github.ref }}'
 
+      - name: 'Configure npm for GitHub Packages'
+        run: |
+          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+
       - name: 'Install dependencies'
         run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
 
