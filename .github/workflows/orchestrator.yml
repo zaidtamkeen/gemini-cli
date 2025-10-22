@@ -45,3 +45,10 @@ jobs:
     uses: './.github/workflows/e2e.yml'
     with:
       version: '${{ needs.build-and-publish.outputs.version }}'
+
+  bundle-size:
+    name: 'Bundle Size Check'
+    needs: 'build-and-publish'
+    uses: './.github/workflows/bundle-size.yml'
+    with:
+      version: '${{ needs.build-and-publish.outputs.version }}'
