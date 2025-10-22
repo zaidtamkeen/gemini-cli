@@ -11,7 +11,7 @@ import * as SdkClientStdioLib from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProviderType, type Config } from '../config/config.js';
-import { GcpJwtProvider } from '../mcp/gcp-jwt-provider.js';
+import { GcpIDTokenProvider } from '../mcp/gcp-id-token-provider.js';
 import { GoogleCredentialProvider } from '../mcp/google-auth-provider.js';
 import { MCPOAuthProvider } from '../mcp/oauth-provider.js';
 import { MCPOAuthTokenStorage } from '../mcp/oauth-token-storage.js';
@@ -466,13 +466,13 @@ describe('mcp-client', () => {
       });
     });
 
-    describe('useGcpJwtProvider', () => {
-      it('should use GcpJwtProvider when specified', async () => {
+    describe('useGcpIDTokenProvider', () => {
+      it('should use GcpIDTokenProvider when specified', async () => {
         const transport = await createTransport(
           'test-server',
           {
             httpUrl: 'http://test.googleapis.com',
-            authProviderType: AuthProviderType.GCP_JWT,
+            authProviderType: AuthProviderType.GCP_ID_TOKEN,
           },
           false,
         );
@@ -480,7 +480,37 @@ describe('mcp-client', () => {
         expect(transport).toBeInstanceOf(StreamableHTTPClientTransport);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const authProvider = (transport as any)._authProvider;
-        expect(authProvider).toBeInstanceOf(GcpJwtProvider);
+        expect(authProvider).toBeInstanceOf(GcpIDTokenProvider);
+      });
+
+      it('should use GcpIDTokenProvider with SSE transport', async () => {
+        const transport = await createTransport(
+          'test-server',
+          {
+            url: 'http://test.googleapis.com',
+            authProviderType: AuthProviderType.GCP_ID_TOKEN,
+          },
+          false,
+        );
+
+        expect(transport).toBeInstanceOf(SSEClientTransport);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const authProvider = (transport as any)._authProvider;
+        expect(authProvider).toBeInstanceOf(GcpIDTokenProvider);
+      });
+
+      it('should throw an error if no URL is provided with GcpIDTokenProvider', async () => {
+        await expect(
+          createTransport(
+            'test-server',
+            {
+              authProviderType: AuthProviderType.GCP_ID_TOKEN,
+            },
+            false,
+          ),
+        ).rejects.toThrow(
+          'URL must be provided in the config for GCP JWT provider',
+        );
       });
     });
   });

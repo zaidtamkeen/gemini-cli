@@ -17,7 +17,7 @@ import type { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.
 
 const fiveMinBufferMs = 5 * 60 * 1000;
 
-export class GcpJwtProvider implements OAuthClientProvider {
+export class GcpIDTokenProvider implements OAuthClientProvider {
   private readonly resourceUrl: string;
   private readonly auth: GoogleAuth;
   private cachedToken?: OAuthTokens;
@@ -40,7 +40,8 @@ export class GcpJwtProvider implements OAuthClientProvider {
         'A url or httpUrl must be provided for the GCP JWT provider',
       );
     }
-    this.resourceUrl = this.config.httpUrl || this.config.url!;
+    const url = new URL(this.config.httpUrl || this.config.url!);
+    this.resourceUrl = url.origin;
     this.auth = new GoogleAuth();
   }
 
@@ -62,6 +63,10 @@ export class GcpJwtProvider implements OAuthClientProvider {
       return this.cachedToken;
     }
 
+    console.log(
+      `[DEBUG] GcpJwtProvider: Fetching token for audience: ${this.resourceUrl}`,
+    );
+
     // Clear cache if expired or missing
     this.cachedToken = undefined;
     this.tokenExpiryTime = undefined;
@@ -73,7 +78,6 @@ export class GcpJwtProvider implements OAuthClientProvider {
       idToken = await client.idTokenProvider.fetchIdToken(this.resourceUrl);
 
       if (!idToken || idToken.length === 0) {
-        // TODO what do I use here instead of console.error?
         console.error('Failed to get ID token from Google');
         return undefined;
       }

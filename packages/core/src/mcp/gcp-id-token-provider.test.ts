@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GcpJwtProvider } from './gcp-jwt-provider.js';
+import { GcpIDTokenProvider } from './gcp-id-token-provider.js';
 import type { MCPServerConfig } from '../config/config.js';
 
 const mockFetchIdToken = vi.fn();
@@ -30,9 +30,8 @@ const defaultConfig: MCPServerConfig = {
   url: 'https://my-service.run.app',
 };
 
-describe('GcpJwtProvider', () => {
+describe('GcpIDTokenProvider', () => {
   beforeEach(() => {
-    // Reset mocks before each test
     vi.clearAllMocks();
     vi.useFakeTimers();
   });
@@ -43,7 +42,7 @@ describe('GcpJwtProvider', () => {
 
   it('should throw an error if no URL is provided', () => {
     const config: MCPServerConfig = {};
-    expect(() => new GcpJwtProvider(config)).toThrow(
+    expect(() => new GcpIDTokenProvider(config)).toThrow(
       'A url or httpUrl must be provided for the GCP JWT provider',
     );
   });
@@ -52,7 +51,7 @@ describe('GcpJwtProvider', () => {
     const mockToken = 'mock-id-token-123';
     mockFetchIdToken.mockResolvedValue(mockToken);
 
-    const provider = new GcpJwtProvider(defaultConfig);
+    const provider = new GcpIDTokenProvider(defaultConfig);
     const tokens = await provider.tokens();
 
     expect(tokens).toBeDefined();
@@ -63,7 +62,7 @@ describe('GcpJwtProvider', () => {
   it('should return undefined if token acquisition fails', async () => {
     mockFetchIdToken.mockResolvedValue(null);
 
-    const provider = new GcpJwtProvider(defaultConfig);
+    const provider = new GcpIDTokenProvider(defaultConfig);
     const tokens = await provider.tokens();
 
     expect(tokens).toBeUndefined();
@@ -72,7 +71,7 @@ describe('GcpJwtProvider', () => {
   it('should make a request with the correct parameters', async () => {
     mockFetchIdToken.mockResolvedValue('test-token');
 
-    const provider = new GcpJwtProvider(defaultConfig);
+    const provider = new GcpIDTokenProvider(defaultConfig);
     await provider.tokens();
 
     expect(mockGetIdTokenClient).toHaveBeenCalledWith(defaultConfig.url);
@@ -80,7 +79,7 @@ describe('GcpJwtProvider', () => {
   });
 
   it('should return a cached token if it is not expired', async () => {
-    const provider = new GcpJwtProvider(defaultConfig);
+    const provider = new GcpIDTokenProvider(defaultConfig);
 
     // jwt payload with exp set to 1 hour from now
     const payload = { exp: Math.floor(Date.now() / 1000) + 3600 };
@@ -103,7 +102,7 @@ describe('GcpJwtProvider', () => {
   });
 
   it('should fetch a new token if the cached token is expired', async () => {
-    const provider = new GcpJwtProvider(defaultConfig);
+    const provider = new GcpIDTokenProvider(defaultConfig);
 
     // Get and cache a token that expires in 1 second
     const expiredPayload = { exp: Math.floor(Date.now() / 1000) + 1 };

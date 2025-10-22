@@ -198,8 +198,6 @@ export class MCPServerConfig {
     readonly targetAudience?: string,
     /* targetServiceAccount format: <service-account-name>@<project-num>.iam.gserviceaccount.com */
     readonly targetServiceAccount?: string,
-    // GCP JWT authentication
-    readonly gcpJwt?: boolean,
   ) {}
 }
 
@@ -207,7 +205,7 @@ export enum AuthProviderType {
   DYNAMIC_DISCOVERY = 'dynamic_discovery',
   GOOGLE_CREDENTIALS = 'google_credentials',
   SERVICE_ACCOUNT_IMPERSONATION = 'service_account_impersonation',
-  GCP_JWT = 'gcp_jwt',
+  GCP_ID_TOKEN = 'gcp_id_token',
 }
 
 export interface SandboxConfig {

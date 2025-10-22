@@ -25,7 +25,7 @@ import type { Config, MCPServerConfig } from '../config/config.js';
 import { AuthProviderType } from '../config/config.js';
 import { GoogleCredentialProvider } from '../mcp/google-auth-provider.js';
 import { ServiceAccountImpersonationProvider } from '../mcp/sa-impersonation-provider.js';
-import { GcpJwtProvider } from '../mcp/gcp-jwt-provider.js';
+import { GcpIDTokenProvider } from '../mcp/gcp-id-token-provider.js';
 import { DiscoveredMCPTool } from './mcp-tool.js';
 
 import type { FunctionDeclaration } from '@google/genai';
@@ -1204,8 +1204,8 @@ export async function createTransport(
     );
   }
 
-  if (mcpServerConfig.authProviderType === AuthProviderType.GCP_JWT) {
-    const provider = new GcpJwtProvider(mcpServerConfig);
+  if (mcpServerConfig.authProviderType === AuthProviderType.GCP_ID_TOKEN) {
+    const provider = new GcpIDTokenProvider(mcpServerConfig);
     const transportOptions:
       | StreamableHTTPClientTransportOptions
       | SSEClientTransportOptions = {
@@ -1222,7 +1222,7 @@ export async function createTransport(
         transportOptions,
       );
     }
-    throw new Error('No URL configured for GCP JWT MCP server');
+    throw new Error('No URL configured for GCP ID Token MCP server');
   }
 
   if (
