@@ -49,6 +49,8 @@ jobs:
     uses: './.github/workflows/e2e.yml'
     with:
       version: '${{ needs.build-and-publish.outputs.version }}'
+    secrets:
+      GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
 
   bundle-size:
     name: 'Bundle Size Check'
