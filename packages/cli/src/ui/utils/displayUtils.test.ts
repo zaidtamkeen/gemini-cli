@@ -19,54 +19,93 @@ import { Colors } from '../colors.js';
 describe('displayUtils', () => {
   describe('getStatusColor', () => {
     describe('with red threshold', () => {
-      const thresholds = {
-        green: 80,
-        yellow: 50,
-        red: 20,
-      };
+      const thresholds = { green: 80, yellow: 50, red: 20 };
 
-      it('should return green for values >= green threshold', () => {
-        expect(getStatusColor(90, thresholds)).toBe(Colors.AccentGreen);
-        expect(getStatusColor(80, thresholds)).toBe(Colors.AccentGreen);
-      });
+      it.each([
+        {
+          value: 90,
+          expected: Colors.AccentGreen,
+          description: 'above green threshold',
+        },
+        {
+          value: 80,
+          expected: Colors.AccentGreen,
+          description: 'at green threshold',
+        },
+        {
+          value: 79,
+          expected: Colors.AccentYellow,
+          description: 'below green, above yellow',
+        },
+        {
+          value: 50,
+          expected: Colors.AccentYellow,
+          description: 'at yellow threshold',
+        },
+        {
+          value: 49,
+          expected: Colors.AccentRed,
+          description: 'below yellow, above red',
+        },
+        {
+          value: 20,
+          expected: Colors.AccentRed,
+          description: 'at red threshold',
+        },
+        {
+          value: 19,
+          expected: Colors.AccentRed,
+          description: 'below red threshold',
+        },
+        {
+          value: 0,
+          expected: Colors.AccentRed,
+          description: 'at minimum',
+        },
+      ])(
+        'should return $expected for value $value ($description)',
+        ({ value, expected }) => {
+          expect(getStatusColor(value, thresholds)).toBe(expected);
+        },
+      );
 
-      it('should return yellow for values < green and >= yellow threshold', () => {
-        expect(getStatusColor(79, thresholds)).toBe(Colors.AccentYellow);
-        expect(getStatusColor(50, thresholds)).toBe(Colors.AccentYellow);
-      });
-
-      it('should return red for values < yellow and >= red threshold', () => {
-        expect(getStatusColor(49, thresholds)).toBe(Colors.AccentRed);
-        expect(getStatusColor(20, thresholds)).toBe(Colors.AccentRed);
-      });
-
-      it('should return error for values < red threshold', () => {
-        expect(getStatusColor(19, thresholds)).toBe(Colors.AccentRed);
-        expect(getStatusColor(0, thresholds)).toBe(Colors.AccentRed);
-      });
-
-      it('should return defaultColor for values < red threshold when provided', () => {
-        expect(
-          getStatusColor(19, thresholds, { defaultColor: Colors.Foreground }),
-        ).toBe(Colors.Foreground);
-      });
+      it.each([
+        { value: 19, defaultColor: Colors.Foreground },
+        { value: 0, defaultColor: Colors.Foreground },
+      ])(
+        'should use defaultColor for value $value when provided',
+        ({ value, defaultColor }) => {
+          expect(getStatusColor(value, thresholds, { defaultColor })).toBe(
+            defaultColor,
+          );
+        },
+      );
     });
 
     describe('when red threshold is not provided', () => {
-      const thresholds = {
-        green: 80,
-        yellow: 50,
-      };
+      const thresholds = { green: 80, yellow: 50 };
 
-      it('should return error color for values < yellow threshold', () => {
-        expect(getStatusColor(49, thresholds)).toBe(Colors.AccentRed);
-      });
+      it.each([
+        {
+          value: 49,
+          expected: Colors.AccentRed,
+          description: 'below yellow threshold',
+        },
+      ])(
+        'should return $expected for value $value ($description)',
+        ({ value, expected }) => {
+          expect(getStatusColor(value, thresholds)).toBe(expected);
+        },
+      );
 
-      it('should return defaultColor for values < yellow threshold when provided', () => {
-        expect(
-          getStatusColor(49, thresholds, { defaultColor: Colors.Foreground }),
-        ).toBe(Colors.Foreground);
-      });
+      it.each([{ value: 49, defaultColor: Colors.Foreground }])(
+        'should use defaultColor for value $value when provided',
+        ({ value, defaultColor }) => {
+          expect(getStatusColor(value, thresholds, { defaultColor })).toBe(
+            defaultColor,
+          );
+        },
+      );
     });
   });
 
