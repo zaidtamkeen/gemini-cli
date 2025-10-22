@@ -1,5 +1,5 @@
 # .github/workflows/pr-checks.yml
-name: 'PR Checks'
+name: 'Checks'
 
 on:
   pull_request:

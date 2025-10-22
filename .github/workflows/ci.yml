@@ -17,6 +17,7 @@ permissions:
   checks: 'write'
   contents: 'read'
   statuses: 'write'
+  packages: 'read'
 
 defaults:
   run:
