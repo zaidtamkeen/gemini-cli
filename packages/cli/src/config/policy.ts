@@ -9,56 +9,73 @@ import {
   PolicyDecision,
   type PolicyRule,
   ApprovalMode,
-  // Read-only tools
-  GREP_TOOL_NAME,
-  LS_TOOL_NAME,
-  READ_MANY_FILES_TOOL_NAME,
-  READ_FILE_TOOL_NAME,
-  // Write tools
-  SHELL_TOOL_NAME,
-  WRITE_FILE_TOOL_NAME,
-  WEB_FETCH_TOOL_NAME,
-  GLOB_TOOL_NAME,
-  EDIT_TOOL_NAME,
-  MEMORY_TOOL_NAME,
-  WEB_SEARCH_TOOL_NAME,
   type PolicyEngine,
   type MessageBus,
   MessageBusType,
   type UpdatePolicy,
 } from '@google/gemini-cli-core';
 import { type Settings } from './settings.js';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import fs from 'node:fs/promises';
+import toml from '@iarna/toml';
+import { z } from 'zod';
 
-// READ_ONLY_TOOLS is a list of built-in tools that do not modify the user's
-// files or system state.
-const READ_ONLY_TOOLS = new Set([
-  GLOB_TOOL_NAME,
-  GREP_TOOL_NAME,
-  LS_TOOL_NAME,
-  READ_FILE_TOOL_NAME,
-  READ_MANY_FILES_TOOL_NAME,
-  WEB_SEARCH_TOOL_NAME,
-]);
+// Get the directory name of the current module
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const POLICIES_DIR = path.resolve(__dirname, 'policies');
 
-// WRITE_TOOLS is a list of built-in tools that can modify the user's files or
-// system state. These tools have a shouldConfirmExecute method.
-// We are keeping this here for visibility and to maintain backwards compatibility
-// with the existing tool permissions system. Eventually we'll remove this and
-// any tool that isn't read only will require a confirmation unless altered by
-// config and policy.
-const WRITE_TOOLS = new Set([
-  EDIT_TOOL_NAME,
-  MEMORY_TOOL_NAME,
-  SHELL_TOOL_NAME,
-  WRITE_FILE_TOOL_NAME,
-  WEB_FETCH_TOOL_NAME,
-]);
+const PolicyRuleSchema = z.object({
+  toolName: z.string().optional(),
+  decision: z.nativeEnum(PolicyDecision),
+  priority: z.number(),
+});
 
-export function createPolicyEngineConfig(
+const PolicyFileSchema = z.object({
+  rule: z.array(PolicyRuleSchema),
+});
+
+async function loadPoliciesFromConfig(
+  approvalMode: ApprovalMode,
+): Promise<PolicyRule[]> {
+  const filesToLoad: string[] = ['read-only.toml'];
+
+  if (approvalMode !== ApprovalMode.YOLO) {
+    filesToLoad.push('write.toml');
+  }
+
+  if (approvalMode === ApprovalMode.YOLO) {
+    filesToLoad.push('default.toml');
+  } else if (approvalMode === ApprovalMode.AUTO_EDIT) {
+    filesToLoad.push('auto-edit.toml');
+  }
+
+  let rules: PolicyRule[] = [];
+
+  for (const file of filesToLoad) {
+    const filePath = path.join(POLICIES_DIR, file);
+    const fileContent = await fs.readFile(filePath, 'utf-8');
+    const parsed = toml.parse(fileContent);
+    const validationResult = PolicyFileSchema.safeParse(parsed);
+    if (!validationResult.success) {
+      // Ideally, we should have better error handling here
+      console.error(
+        `Failed to parse policy file ${file}:`,
+        validationResult.error,
+      );
+      continue;
+    }
+    rules = rules.concat(validationResult.data.rule);
+  }
+
+  return rules;
+}
+
+export async function createPolicyEngineConfig(
   settings: Settings,
   approvalMode: ApprovalMode,
-): PolicyEngineConfig {
-  const rules: PolicyRule[] = [];
+): Promise<PolicyEngineConfig> {
+  const rules: PolicyRule[] = await loadPoliciesFromConfig(approvalMode);
 
   // Priority system for policy rules:
   // - Higher priority numbers win over lower priority numbers
@@ -68,6 +85,7 @@ export function createPolicyEngineConfig(
   // Priority levels used in this configuration:
   //   0: Default allow-all (YOLO mode only)
   //   10: Write tools default to ASK_USER
+  //   15: Auto-edit tool override
   //   50: Auto-accept read-only tools
   //   85: MCP servers allowed list
   //   90: MCP servers with trust=true
@@ -140,41 +158,6 @@ export function createPolicyEngineConfig(
         priority: 195,
       });
     }
-  }
-
-  // Allow all read-only tools.
-  // Priority: 50
-  for (const tool of READ_ONLY_TOOLS) {
-    rules.push({
-      toolName: tool,
-      decision: PolicyDecision.ALLOW,
-      priority: 50,
-    });
-  }
-
-  // Only add write tool rules if not in YOLO mode
-  // In YOLO mode, the wildcard ALLOW rule handles everything
-  if (approvalMode !== ApprovalMode.YOLO) {
-    for (const tool of WRITE_TOOLS) {
-      rules.push({
-        toolName: tool,
-        decision: PolicyDecision.ASK_USER,
-        priority: 10,
-      });
-    }
-  }
-
-  if (approvalMode === ApprovalMode.YOLO) {
-    rules.push({
-      decision: PolicyDecision.ALLOW,
-      priority: 0, // Lowest priority - catches everything not explicitly configured
-    });
-  } else if (approvalMode === ApprovalMode.AUTO_EDIT) {
-    rules.push({
-      toolName: EDIT_TOOL_NAME,
-      decision: PolicyDecision.ALLOW,
-      priority: 15, // Higher than write tools (10) to override ASK_USER
-    });
   }
 
   return {

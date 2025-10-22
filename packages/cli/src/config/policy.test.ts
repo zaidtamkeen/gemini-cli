@@ -14,9 +14,12 @@ import {
 } from '@google/gemini-cli-core';
 
 describe('createPolicyEngineConfig', () => {
-  it('should return ASK_USER for write tools and ALLOW for read-only tools by default', () => {
+  it('should return ASK_USER for write tools and ALLOW for read-only tools by default', async () => {
     const settings: Settings = {};
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
     expect(config.defaultDecision).toBe(PolicyDecision.ASK_USER);
     // The order of the rules is not guaranteed, so we sort them by tool name.
     config.rules?.sort((a, b) =>
@@ -81,11 +84,14 @@ describe('createPolicyEngineConfig', () => {
     ]);
   });
 
-  it('should allow tools in tools.allowed', () => {
+  it('should allow tools in tools.allowed', async () => {
     const settings: Settings = {
       tools: { allowed: ['run_shell_command'] },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
     const rule = config.rules?.find(
       (r) =>
         r.toolName === 'run_shell_command' &&
@@ -95,11 +101,14 @@ describe('createPolicyEngineConfig', () => {
     expect(rule?.priority).toBe(100);
   });
 
-  it('should deny tools in tools.exclude', () => {
+  it('should deny tools in tools.exclude', async () => {
     const settings: Settings = {
       tools: { exclude: ['run_shell_command'] },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
     const rule = config.rules?.find(
       (r) =>
         r.toolName === 'run_shell_command' &&
@@ -109,11 +118,14 @@ describe('createPolicyEngineConfig', () => {
     expect(rule?.priority).toBe(200);
   });
 
-  it('should allow tools from allowed MCP servers', () => {
+  it('should allow tools from allowed MCP servers', async () => {
     const settings: Settings = {
       mcp: { allowed: ['my-server'] },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
     const rule = config.rules?.find(
       (r) =>
         r.toolName === 'my-server__*' && r.decision === PolicyDecision.ALLOW,
@@ -122,11 +134,14 @@ describe('createPolicyEngineConfig', () => {
     expect(rule?.priority).toBe(85);
   });
 
-  it('should deny tools from excluded MCP servers', () => {
+  it('should deny tools from excluded MCP servers', async () => {
     const settings: Settings = {
       mcp: { excluded: ['my-server'] },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
     const rule = config.rules?.find(
       (r) =>
         r.toolName === 'my-server__*' && r.decision === PolicyDecision.DENY,
@@ -135,7 +150,7 @@ describe('createPolicyEngineConfig', () => {
     expect(rule?.priority).toBe(195);
   });
 
-  it('should allow tools from trusted MCP servers', () => {
+  it('should allow tools from trusted MCP servers', async () => {
     const settings: Settings = {
       mcpServers: {
         'trusted-server': {
@@ -150,7 +165,10 @@ describe('createPolicyEngineConfig', () => {
         },
       },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
 
     const trustedRule = config.rules?.find(
       (r) =>
@@ -169,7 +187,7 @@ describe('createPolicyEngineConfig', () => {
     expect(untrustedRule).toBeUndefined();
   });
 
-  it('should handle multiple MCP server configurations together', () => {
+  it('should handle multiple MCP server configurations together', async () => {
     const settings: Settings = {
       mcp: {
         allowed: ['allowed-server'],
@@ -183,7 +201,10 @@ describe('createPolicyEngineConfig', () => {
         },
       },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
 
     // Check allowed server
     const allowedRule = config.rules?.find(
@@ -213,18 +234,21 @@ describe('createPolicyEngineConfig', () => {
     expect(excludedRule?.priority).toBe(195);
   });
 
-  it('should allow all tools in YOLO mode', () => {
+  it('should allow all tools in YOLO mode', async () => {
     const settings: Settings = {};
-    const config = createPolicyEngineConfig(settings, ApprovalMode.YOLO);
+    const config = await createPolicyEngineConfig(settings, ApprovalMode.YOLO);
     const rule = config.rules?.find(
       (r) => r.decision === PolicyDecision.ALLOW && r.priority === 0,
     );
     expect(rule).toBeDefined();
   });
 
-  it('should allow edit tool in AUTO_EDIT mode', () => {
+  it('should allow edit tool in AUTO_EDIT mode', async () => {
     const settings: Settings = {};
-    const config = createPolicyEngineConfig(settings, ApprovalMode.AUTO_EDIT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.AUTO_EDIT,
+    );
     const rule = config.rules?.find(
       (r) => r.toolName === 'replace' && r.decision === PolicyDecision.ALLOW,
     );
@@ -232,11 +256,14 @@ describe('createPolicyEngineConfig', () => {
     expect(rule?.priority).toBe(15);
   });
 
-  it('should prioritize exclude over allow', () => {
+  it('should prioritize exclude over allow', async () => {
     const settings: Settings = {
       tools: { allowed: ['run_shell_command'], exclude: ['run_shell_command'] },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
     const denyRule = config.rules?.find(
       (r) =>
         r.toolName === 'run_shell_command' &&
@@ -252,12 +279,15 @@ describe('createPolicyEngineConfig', () => {
     expect(denyRule!.priority).toBeGreaterThan(allowRule!.priority!);
   });
 
-  it('should prioritize specific tool allows over MCP server excludes', () => {
+  it('should prioritize specific tool allows over MCP server excludes', async () => {
     const settings: Settings = {
       mcp: { excluded: ['my-server'] },
       tools: { allowed: ['my-server__specific-tool'] },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
 
     const serverDenyRule = config.rules?.find(
       (r) =>
@@ -278,7 +308,7 @@ describe('createPolicyEngineConfig', () => {
     // so server deny wins - this might be counterintuitive
   });
 
-  it('should prioritize specific tool excludes over MCP server allows', () => {
+  it('should prioritize specific tool excludes over MCP server allows', async () => {
     const settings: Settings = {
       mcp: { allowed: ['my-server'] },
       mcpServers: {
@@ -290,7 +320,10 @@ describe('createPolicyEngineConfig', () => {
       },
       tools: { exclude: ['my-server__dangerous-tool'] },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
 
     const serverAllowRule = config.rules?.find(
       (r) =>
@@ -307,7 +340,7 @@ describe('createPolicyEngineConfig', () => {
     expect(toolDenyRule!.priority).toBeGreaterThan(serverAllowRule!.priority!);
   });
 
-  it('should handle complex priority scenarios correctly', () => {
+  it('should handle complex priority scenarios correctly', async () => {
     const settings: Settings = {
       tools: {
         autoAccept: true, // Priority 50 for read-only tools
@@ -326,7 +359,10 @@ describe('createPolicyEngineConfig', () => {
         },
       },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
 
     // Verify glob is denied even though autoAccept would allow it
     const globDenyRule = config.rules?.find(
@@ -358,7 +394,7 @@ describe('createPolicyEngineConfig', () => {
     ).toBe(true);
   });
 
-  it('should handle MCP servers with undefined trust property', () => {
+  it('should handle MCP servers with undefined trust property', async () => {
     const settings: Settings = {
       mcpServers: {
         'no-trust-property': {
@@ -373,7 +409,10 @@ describe('createPolicyEngineConfig', () => {
         },
       },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
 
     // Neither server should have an allow rule
     const noTrustRule = config.rules?.find(
@@ -391,11 +430,11 @@ describe('createPolicyEngineConfig', () => {
     expect(explicitFalseRule).toBeUndefined();
   });
 
-  it('should not add write tool rules in YOLO mode', () => {
+  it('should not add write tool rules in YOLO mode', async () => {
     const settings: Settings = {
       tools: { exclude: ['dangerous-tool'] },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.YOLO);
+    const config = await createPolicyEngineConfig(settings, ApprovalMode.YOLO);
 
     // Should have the wildcard allow rule with priority 0
     const wildcardRule = config.rules?.find(
@@ -426,7 +465,7 @@ describe('createPolicyEngineConfig', () => {
     expect(excludeRule?.priority).toBe(200);
   });
 
-  it('should handle combination of trusted server and excluded server for same name', () => {
+  it('should handle combination of trusted server and excluded server for same name', async () => {
     const settings: Settings = {
       mcpServers: {
         'conflicted-server': {
@@ -439,7 +478,10 @@ describe('createPolicyEngineConfig', () => {
         excluded: ['conflicted-server'], // Priority 195
       },
     };
-    const config = createPolicyEngineConfig(settings, ApprovalMode.DEFAULT);
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
 
     // Both rules should exist
     const trustRule = config.rules?.find(
@@ -461,11 +503,11 @@ describe('createPolicyEngineConfig', () => {
     // Exclude (195) should win over trust (90) when evaluated
   });
 
-  it('should handle all approval modes correctly', () => {
+  it('should handle all approval modes correctly', async () => {
     const settings: Settings = {};
 
     // Test DEFAULT mode
-    const defaultConfig = createPolicyEngineConfig(
+    const defaultConfig = await createPolicyEngineConfig(
       settings,
       ApprovalMode.DEFAULT,
     );
@@ -477,7 +519,10 @@ describe('createPolicyEngineConfig', () => {
     ).toBeUndefined();
 
     // Test YOLO mode
-    const yoloConfig = createPolicyEngineConfig(settings, ApprovalMode.YOLO);
+    const yoloConfig = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.YOLO,
+    );
     expect(yoloConfig.defaultDecision).toBe(PolicyDecision.ASK_USER);
     const yoloWildcard = yoloConfig.rules?.find(
       (r) => !r.toolName && r.decision === PolicyDecision.ALLOW,
@@ -486,7 +531,7 @@ describe('createPolicyEngineConfig', () => {
     expect(yoloWildcard?.priority).toBe(0);
 
     // Test AUTO_EDIT mode
-    const autoEditConfig = createPolicyEngineConfig(
+    const autoEditConfig = await createPolicyEngineConfig(
       settings,
       ApprovalMode.AUTO_EDIT,
     );

@@ -1,0 +1,5 @@
+
+[[rule]]
+toolName = "replace"
+decision = "allow"
+priority = 15
