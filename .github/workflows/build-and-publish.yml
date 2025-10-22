@@ -34,9 +34,9 @@ jobs:
         run: 'npm ci'
 
       - name: 'Setup NPMRC'
-        uses: ./.github/actions/setup-npmrc
+        uses: './.github/actions/setup-npmrc'
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
 
       - name: 'Bundle'
         run: 'npm run bundle'

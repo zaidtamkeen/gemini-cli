@@ -45,13 +45,13 @@ jobs:
 
   get-vars:
     name: 'Get Environment Variables'
-    runs-on: ubuntu-latest
-    environment: dev
+    runs-on: 'ubuntu-latest'
+    environment: 'dev'
     outputs:
-      cli-package-name: ${{ steps.get-vars.outputs.cli-package-name }}
+      cli-package-name: '${{ steps.get-vars.outputs.cli-package-name }}'
     steps:
-      - id: get-vars
-        run: echo "cli-package-name=${{ vars.CLI_PACKAGE_NAME }}" >> $GITHUB_OUTPUT
+      - id: 'get-vars'
+        run: 'echo ''cli-package-name=''''${{ vars.CLI_PACKAGE_NAME }}'''''' >> "$GITHUB_OUTPUT"'
 
   e2e:
     name: 'E2E Checks'

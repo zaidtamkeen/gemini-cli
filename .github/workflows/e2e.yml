@@ -50,9 +50,9 @@ jobs:
           ref: '${{ github.event.inputs.branch_ref || github.ref }}'
 
       - name: 'Setup NPMRC'
-        uses: ./.github/actions/setup-npmrc
+        uses: './.github/actions/setup-npmrc'
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
 
       - name: 'Install dependencies'
         run: 'npm install ${{ inputs.cli-package-name }}@${{ inputs.version }}'
@@ -104,9 +104,9 @@ jobs:
           node-version: '20.x'
 
       - name: 'Setup NPMRC'
-        uses: ./.github/actions/setup-npmrc
+        uses: './.github/actions/setup-npmrc'
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
 
       - name: 'Install dependencies'
         run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
@@ -175,9 +175,9 @@ jobs:
         shell: 'pwsh'
 
       - name: 'Setup NPMRC'
-        uses: ./.github/actions/setup-npmrc
+        uses: './.github/actions/setup-npmrc'
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
 
       - name: 'Install dependencies'
         run: 'npm install ${{ inputs.cli-package-name }}@${{ inputs.version }}'
