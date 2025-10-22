@@ -38,9 +38,4 @@ updatePackageJson('packages/core/package.json', (pkg) => {
   pkg.name = '@google-gemini/gemini-cli-core';
 });
 
-// Create .npmrc for publishing to GitHub Packages
-const npmrcContent = `@google-gemini:registry=https://npm.pkg.github.com/`;
-fs.writeFileSync(path.resolve(rootDir, '.npmrc'), npmrcContent);
-console.log('Created .npmrc for @google-gemini scope.');
-
 console.log('Successfully prepared packages for GitHub release.');
