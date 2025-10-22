@@ -47,8 +47,10 @@ jobs:
     name: 'E2E Checks'
     needs: 'build-and-publish'
     uses: './.github/workflows/e2e.yml'
+    environment: dev
     with:
       version: '${{ needs.build-and-publish.outputs.version }}'
+      cli-package-name: '${{ vars.CLI_PACKAGE_NAME }}'
     secrets:
       GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
 

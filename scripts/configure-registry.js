@@ -4,6 +4,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @fileoverview This script automates the configuration of the user's
+ * global .npmrc file to switch between the production npm registry (npmjs.org)
+ * and the development registry (GitHub Packages).
+ *
+ * Rationale:
+ * While a developer could manually configure their .npmrc file, this script
+ * provides a consistent, automated, and less error-prone way to manage
+ * registry configurations. It simplifies the process of switching between
+ * consuming production packages and pre-release packages for development
+ * and testing, which is a common workflow in this project.
+ *
+ * The script also handles backing up and restoring the user's existing
+ * .npmrc file, preventing accidental data loss.
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';

@@ -9,6 +9,10 @@ on:
         description: 'The version of the published package'
         required: true
         type: 'string'
+      cli-package-name:
+        description: 'The name of the CLI package to install'
+        required: true
+        type: 'string'
     secrets:
       GEMINI_API_KEY:
         required: true
@@ -31,7 +35,6 @@ jobs:
           - 'sandbox:docker'
         node-version:
           - '20.x'
-
     steps:
       - name: 'Checkout (fork)'
         uses: 'actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955' # ratchet:actions/checkout@v5
@@ -46,15 +49,13 @@ jobs:
         with:
           ref: '${{ github.event.inputs.branch_ref || github.ref }}'
 
-      - name: 'Configure npm for GitHub Packages'
-        run: |
-          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+      - name: 'Setup NPMRC'
+        uses: ./.github/actions/setup-npmrc
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Install dependencies'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
-
-      - name: 'Set up Docker'
+        run: 'npm install ${{ inputs.cli-package-name }}@${{ inputs.version }}'
         if: "matrix.sandbox == 'sandbox:docker'"
         uses: 'docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435' # ratchet:docker/setup-buildx-action@v3
 
@@ -100,10 +101,10 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: 'Configure npm for GitHub Packages'
-        run: |
-          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+      - name: 'Setup NPMRC'
+        uses: ./.github/actions/setup-npmrc
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Install dependencies'
         run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
@@ -171,14 +172,13 @@ jobs:
           npm config set registry https://registry.npmjs.org/
         shell: 'pwsh'
 
-      - name: 'Configure npm for GitHub Packages'
-        run: |
-          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
-        shell: 'pwsh'
+      - name: 'Setup NPMRC'
+        uses: ./.github/actions/setup-npmrc
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 'Install dependencies'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
+        run: 'npm install ${{ inputs.cli-package-name }}@${{ inputs.version }}'
         shell: 'pwsh'
 
       - name: 'Run E2E tests'
