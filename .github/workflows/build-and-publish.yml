@@ -38,9 +38,6 @@ jobs:
           echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
-      - name: 'Prepare for GitHub release'
-        run: 'node scripts/prepare-github-release.js'
-
       - name: 'Bundle'
         run: 'npm run bundle'
 
@@ -53,6 +50,9 @@ jobs:
           minimum-change-threshold: '1000'
           compression: 'none'
           clean-script: 'clean'
+
+      - name: 'Prepare for GitHub release'
+        run: 'node scripts/prepare-github-release.js'
 
       - name: 'Set CI Version'
         id: 'version'
