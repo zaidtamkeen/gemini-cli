@@ -328,26 +328,13 @@ export async function main() {
       ): string[] => {
         const finalArgs = [...args];
         if (stdinData) {
-          const deprecatedPromptIndex = finalArgs.findIndex(
-            (arg) => arg === '--prompt',
+          const promptIndex = finalArgs.findIndex(
+            (arg) => arg === '--prompt' || arg === '-p',
           );
-          const promptIndex = finalArgs.findIndex((arg) => arg === '-p');
-          if (deprecatedPromptIndex > -1) {
-            console.warn(
-              'Use the positional prompt instead. This flag will be removed in a future version.',
-            );
-          }
-          if (
-            (promptIndex > -1 || deprecatedPromptIndex > -1) &&
-            finalArgs.length > promptIndex + 1
-          ) {
-            const finalPromptIndex = Math.max(
-              promptIndex,
-              deprecatedPromptIndex,
-            );
+          if (promptIndex > -1 && finalArgs.length > promptIndex + 1) {
             // If there's a prompt argument, prepend stdin to it
-            finalArgs[finalPromptIndex + 1] =
-              `${stdinData}\n\n${finalArgs[finalPromptIndex + 1]}`;
+            finalArgs[promptIndex + 1] =
+              `${stdinData}\n\n${finalArgs[promptIndex + 1]}`;
           } else {
             // If there's no prompt argument, add stdin as the prompt
             finalArgs.push('--prompt', stdinData);
