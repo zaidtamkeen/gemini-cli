@@ -2,11 +2,6 @@ name: 'Testing: CI'
 
 on:
   workflow_call:
-    inputs:
-      version:
-        description: 'The version of the published package'
-        required: true
-        type: 'string'
 
 concurrency:
   group: 'ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}'
@@ -175,8 +170,8 @@ jobs:
           echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
-      - name: 'Install bundle'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
+      - name: 'Install dependencies'
+        run: 'npm ci'
 
       - uses: 'preactjs/compressed-size-action@946a292cd35bd1088e0d7eb92b69d1a8d5b5d76a'
         with:

@@ -25,16 +25,19 @@ permissions:
   id-token: 'write'
 
 jobs:
+  lint:
+    name: 'Lint'
+    uses: './.github/workflows/lint.yml'
+
   build-and-publish:
     name: 'Build and Publish CI Bundle'
+    needs: 'lint'
     uses: './.github/workflows/build-and-publish.yml'
 
   ci:
     name: 'CI Checks'
-    needs: 'build-and-publish'
+    needs: 'lint'
     uses: './.github/workflows/ci.yml'
-    with:
-      version: '${{ needs.build-and-publish.outputs.version }}'
 
   e2e:
     name: 'E2E Checks'
