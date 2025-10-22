@@ -11,6 +11,8 @@ export * from './output/json-formatter.js';
 export * from './output/stream-json-formatter.js';
 export * from './policy/types.js';
 export * from './policy/policy-engine.js';
+export * from './confirmation-bus/types.js';
+export * from './confirmation-bus/message-bus.js';
 
 // Export Core Logic
 export * from './core/client.js';
@@ -59,6 +61,7 @@ export * from './utils/ignorePatterns.js';
 export * from './utils/partUtils.js';
 export * from './utils/promptIdContext.js';
 export * from './utils/thoughtUtils.js';
+export * from './utils/debugLogger.js';
 
 // Export services
 export * from './services/fileDiscoveryService.js';

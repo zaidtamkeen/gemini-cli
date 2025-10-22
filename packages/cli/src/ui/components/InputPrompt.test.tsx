@@ -172,6 +172,9 @@ describe('InputPrompt', () => {
         text: '',
         accept: vi.fn(),
         clear: vi.fn(),
+        isLoading: false,
+        isActive: false,
+        markSelected: vi.fn(),
       },
     };
     mockedUseCommandCompletion.mockReturnValue(mockCommandCompletion);
@@ -200,6 +203,8 @@ describe('InputPrompt', () => {
 
     mockedUseKittyKeyboardProtocol.mockReturnValue({
       supported: false,
+      enabled: false,
+      checking: false,
     });
 
     props = {
@@ -223,6 +228,8 @@ describe('InputPrompt', () => {
       inputWidth: 80,
       suggestionsWidth: 80,
       focus: true,
+      setQueueErrorMessage: vi.fn(),
+      streamingState: StreamingState.Idle,
     };
   });
 
@@ -1553,7 +1560,11 @@ describe('InputPrompt', () => {
   describe('paste auto-submission protection', () => {
     beforeEach(() => {
       vi.useFakeTimers();
-      mockedUseKittyKeyboardProtocol.mockReturnValue({ supported: false });
+      mockedUseKittyKeyboardProtocol.mockReturnValue({
+        supported: false,
+        enabled: false,
+        checking: false,
+      });
     });
 
     afterEach(() => {
@@ -1570,8 +1581,9 @@ describe('InputPrompt', () => {
       await vi.runAllTimersAsync();
 
       // Simulate a paste operation (this should set the paste protection)
-      stdin.write(`\x1b[200~pasted content\x1b[201~`);
-      await vi.runAllTimersAsync();
+      act(() => {
+        stdin.write(`\x1b[200~pasted content\x1b[201~`);
+      });
 
       // Simulate an Enter key press immediately after paste
       stdin.write('\r');
@@ -1618,7 +1630,11 @@ describe('InputPrompt', () => {
       {
         name: 'kitty',
         setup: () =>
-          mockedUseKittyKeyboardProtocol.mockReturnValue({ supported: true }),
+          mockedUseKittyKeyboardProtocol.mockReturnValue({
+            supported: true,
+            enabled: true,
+            checking: false,
+          }),
       },
     ])(
       'should allow immediate submission for a trusted paste ($name)',
@@ -1822,13 +1838,14 @@ describe('InputPrompt', () => {
       act(() => {
         stdin.write('\x12');
       });
-      await wait();
 
-      const frame = stdout.lastFrame();
-      expect(frame).toContain('(r:)');
-      expect(frame).toContain('echo hello');
-      expect(frame).toContain('echo world');
-      expect(frame).toContain('ls');
+      await waitFor(() => {
+        const frame = stdout.lastFrame();
+        expect(frame).toContain('(r:)');
+        expect(frame).toContain('echo hello');
+        expect(frame).toContain('echo world');
+        expect(frame).toContain('ls');
+      });
 
       unmount();
     });
@@ -1883,10 +1900,11 @@ describe('InputPrompt', () => {
       act(() => {
         stdin.write('\x12');
       });
-      await wait();
 
       // Verify reverse search is active
-      expect(stdout.lastFrame()).toContain('(r:)');
+      await waitFor(() => {
+        expect(stdout.lastFrame()).toContain('(r:)');
+      });
 
       // Press Tab to complete the highlighted entry
       act(() => {
@@ -1919,9 +1937,10 @@ describe('InputPrompt', () => {
       act(() => {
         stdin.write('\x12');
       });
-      await wait();
 
-      expect(stdout.lastFrame()).toContain('(r:)');
+      await waitFor(() => {
+        expect(stdout.lastFrame()).toContain('(r:)');
+      });
 
       act(() => {
         stdin.write('\r');
@@ -1935,22 +1954,48 @@ describe('InputPrompt', () => {
       unmount();
     });
 
-    it('text and cursor position should be restored after reverse search', async () => {
-      props.buffer.setText('initial text');
-      props.buffer.cursor = [0, 3];
+    it('should restore text and cursor position after reverse search"', async () => {
+      const initialText = 'initial text';
+      const initialCursor: [number, number] = [0, 3];
+
+      props.buffer.setText(initialText);
+      props.buffer.cursor = initialCursor;
+
+      // Mock the reverse search completion to be active and then reset
+      mockedUseReverseSearchCompletion.mockImplementation(
+        (buffer, shellHistory, reverseSearchActiveFromInputPrompt) => ({
+          ...mockReverseSearchCompletion,
+          suggestions: reverseSearchActiveFromInputPrompt
+            ? [{ label: 'history item', value: 'history item' }]
+            : [],
+          showSuggestions: reverseSearchActiveFromInputPrompt,
+        }),
+      );
+
       const { stdin, stdout, unmount } = renderWithProviders(
         <InputPrompt {...props} />,
       );
-      stdin.write('\x12');
       await wait();
-      expect(stdout.lastFrame()).toContain('(r:)');
-      stdin.write('\u001b[27u'); // Press kitty escape key
+
+      // reverse search with Ctrl+R
+      act(() => {
+        stdin.write('\x12');
+      });
+
+      await waitFor(() => {
+        expect(stdout.lastFrame()).toContain('(r:)');
+      });
+
+      // Press kitty escape key
+      act(() => {
+        stdin.write('\u001b[27u');
+      });
 
       await waitFor(() => {
         expect(stdout.lastFrame()).not.toContain('(r:)');
+        expect(props.buffer.text).toBe(initialText);
+        expect(props.buffer.cursor).toEqual(initialCursor);
       });
-      expect(props.buffer.text).toBe('initial text');
-      expect(props.buffer.cursor).toEqual([0, 3]);
 
       unmount();
     });

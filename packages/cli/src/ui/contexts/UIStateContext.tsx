@@ -93,9 +93,6 @@ export interface UIState {
   messageQueue: string[];
   queueErrorMessage: string | null;
   showAutoAcceptIndicator: ApprovalMode;
-  showWorkspaceMigrationDialog: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  workspaceExtensions: any[]; // Extension[]
   // Quota-related state
   userTier: UserTierId | undefined;
   proQuotaRequest: ProQuotaDialogRequest | null;
@@ -125,6 +122,7 @@ export interface UIState {
   activePtyId: number | undefined;
   embeddedShellFocused: boolean;
   showDebugProfiler: boolean;
+  showFullTodos: boolean;
 }
 
 export const UIStateContext = createContext<UIState | null>(null);

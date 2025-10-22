@@ -221,7 +221,6 @@ export type HistoryItemMcpStatus = HistoryItemBase & {
   connectingServers: string[];
   showDescriptions: boolean;
   showSchema: boolean;
-  showTips: boolean;
 };
 
 // Using Omit<HistoryItem, 'id'> seems to have some issues with typescript's
