@@ -201,7 +201,7 @@ jobs:
       - 'test_linux'
       - 'test_mac'
       - 'codeql'
-    runs-on: 'gemini-cli-ubuntu-16-core'
+    runs-on: 'ubuntu-latest'
     steps:
       - name: 'Check all job results'
         run: |

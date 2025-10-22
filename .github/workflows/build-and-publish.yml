@@ -11,7 +11,7 @@ on:
 jobs:
   publish-bundle:
     name: 'Publish Bundle'
-    runs-on: 'gemini-cli-ubuntu-16-core'
+    runs-on: 'ubuntu-latest'
     outputs:
       version: '${{ steps.version.outputs.version }}'
     permissions:
