@@ -471,7 +471,7 @@ export class Config {
     this.enableMessageBusIntegration =
       params.enableMessageBusIntegration ?? false;
     this.codebaseInvestigatorSettings = params.codebaseInvestigatorSettings;
-    this.continueOnFailedApiCall = false; //params.continueOnFailedApiCall ?? true;
+    this.continueOnFailedApiCall = params.continueOnFailedApiCall ?? true;
     this.enableShellOutputEfficiency =
       params.enableShellOutputEfficiency ?? true;
     this.enableFinishTool = true;

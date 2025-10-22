@@ -110,6 +110,7 @@ export interface ToolCallResponseInfo {
   errorType: ToolErrorType | undefined;
   outputFile?: string | undefined;
   contentLength?: number;
+  isFinish?: boolean;
 }
 
 export interface ServerToolCallConfirmationDetails {

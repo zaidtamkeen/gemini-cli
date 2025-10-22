@@ -148,7 +148,7 @@ ${(function () {
 5. **Verify (Standards):** VERY IMPORTANT: After making code changes, execute the project-specific build, linting and type-checking commands (e.g., 'tsc', 'npm run lint', 'ruff check .') that you have identified for this project (or obtained from the user). This ensures code quality and adherence to standards. If unsure about these commands, you can ask the user if they'd like you to run them and if so how to.
 ${
   enableFinish
-    ? `6. **Finalize:** After all verification passes, you MUST use the '${FinishTool.Name}' tool. Provide a concise, one-sentence summary of the work you have completed in the 'summary' parameter. After calling the '${FinishTool.Name}' tool, your turn is over; do not call any other tools and await the user's next instruction.`
+    ? `6. **Finalize:** After all verification passes, conclude your work. If you used tools to accomplish the task, you SHOULD use the '${FinishTool.Name}' tool to signal completion. Provide a concise, one-sentence summary of the work you completed in the 'summary' parameter. After calling '${FinishTool.Name}', your turn is over. In all cases, await the user's next instruction.`
     : `6. **Finalize:** After all verification passes, consider the task complete. Do not remove or revert any changes or created files (like tests). Await the user's next instruction.`
 }
 

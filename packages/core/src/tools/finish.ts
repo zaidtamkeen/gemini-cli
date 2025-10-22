@@ -57,6 +57,7 @@ class FinishToolInvocation extends BaseToolInvocation<
     return {
       llmContent: `Finished: ${this.params.summary}`,
       returnDisplay: `Finished: ${this.params.summary}`,
+      isFinish: true,
     };
   }
 }
