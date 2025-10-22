@@ -10,7 +10,7 @@ permissions:
 jobs:
   lint:
     name: 'Lint All'
-    runs-on: 'ubuntu-latest'
+    runs-on: 'gemini-cli-ubuntu-16-core'
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
