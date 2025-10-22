@@ -43,14 +43,23 @@ jobs:
     needs: 'lint'
     uses: './.github/workflows/ci.yml'
 
+  get-vars:
+    name: 'Get Environment Variables'
+    runs-on: ubuntu-latest
+    environment: dev
+    outputs:
+      cli-package-name: ${{ steps.get-vars.outputs.cli-package-name }}
+    steps:
+      - id: get-vars
+        run: echo "cli-package-name=${{ vars.CLI_PACKAGE_NAME }}" >> $GITHUB_OUTPUT
+
   e2e:
     name: 'E2E Checks'
-    needs: 'build-and-publish'
+    needs: ['build-and-publish', 'get-vars']
     uses: './.github/workflows/e2e.yml'
-    environment: dev
     with:
       version: '${{ needs.build-and-publish.outputs.version }}'
-      cli-package-name: '${{ vars.CLI_PACKAGE_NAME }}'
+      cli-package-name: '${{ needs.get-vars.outputs.cli-package-name }}'
     secrets:
       GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
 
