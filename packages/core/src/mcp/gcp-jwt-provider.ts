@@ -17,15 +17,8 @@ import type { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.
 
 const fiveMinBufferMs = 5 * 60 * 1000;
 
-function createIamApiUrl(targetSA: string): string {
-  return `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(targetSA)}:generateIdToken`;
-}
-
-export class ServiceAccountImpersonationProvider
-  implements OAuthClientProvider
-{
-  private readonly targetServiceAccount: string;
-  private readonly targetAudience: string; // OAuth Client Id
+export class GcpJwtProvider implements OAuthClientProvider {
+  private readonly resourceUrl: string;
   private readonly auth: GoogleAuth;
   private cachedToken?: OAuthTokens;
   private tokenExpiryTime?: number;
@@ -33,7 +26,7 @@ export class ServiceAccountImpersonationProvider
   // Properties required by OAuthClientProvider, with no-op values
   readonly redirectUrl = '';
   readonly clientMetadata: OAuthClientMetadata = {
-    client_name: 'Gemini CLI (Service Account Impersonation)',
+    client_name: 'Gemini CLI (GCP JWT)',
     redirect_uris: [],
     grant_types: [],
     response_types: [],
@@ -42,27 +35,12 @@ export class ServiceAccountImpersonationProvider
   private _clientInformation?: OAuthClientInformationFull;
 
   constructor(private readonly config: MCPServerConfig) {
-    // This check is done in mcp-client.ts. This is just an additional check.
     if (!this.config.httpUrl && !this.config.url) {
       throw new Error(
-        'A url or httpUrl must be provided for the Service Account Impersonation provider',
+        'A url or httpUrl must be provided for the GCP JWT provider',
       );
     }
-
-    if (!config.targetAudience) {
-      throw new Error(
-        'targetAudience must be provided for the Service Account Impersonation provider',
-      );
-    }
-    this.targetAudience = config.targetAudience;
-
-    if (!config.targetServiceAccount) {
-      throw new Error(
-        'targetServiceAccount must be provided for the Service Account Impersonation provider',
-      );
-    }
-    this.targetServiceAccount = config.targetServiceAccount;
-
+    this.resourceUrl = this.config.httpUrl || this.config.url!;
     this.auth = new GoogleAuth();
   }
 
@@ -75,7 +53,7 @@ export class ServiceAccountImpersonationProvider
   }
 
   async tokens(): Promise<OAuthTokens | undefined> {
-    // 1. Check if we have a valid, non-expired cached token.
+    // Check for non-expired token
     if (
       this.cachedToken &&
       this.tokenExpiryTime &&
@@ -84,25 +62,15 @@ export class ServiceAccountImpersonationProvider
       return this.cachedToken;
     }
 
-    // 2. Clear any invalid/expired cache.
+    // Clear cache if expired or missing
     this.cachedToken = undefined;
     this.tokenExpiryTime = undefined;
 
     // 3. Fetch a new ID token.
-    const client = await this.auth.getClient();
-    const url = createIamApiUrl(this.targetServiceAccount);
-
     let idToken: string;
     try {
-      const res = await client.request<{ token: string }>({
-        url,
-        method: 'POST',
-        data: {
-          audience: this.targetAudience,
-          includeEmail: true,
-        },
-      });
-      idToken = res.data.token;
+      const client = await this.auth.getIdTokenClient(this.resourceUrl);
+      idToken = await client.idTokenProvider.fetchIdToken(this.resourceUrl);
 
       if (!idToken || idToken.length === 0) {
         console.error('Failed to get ID token from Google');
@@ -113,7 +81,6 @@ export class ServiceAccountImpersonationProvider
       return undefined;
     }
 
-    const expiryTime = OAuthUtils.parseTokenExpiry(idToken);
     // Note: We are placing the OIDC ID Token into the `access_token` field.
     // This is because the CLI uses this field to construct the
     // `Authorization: Bearer <token>` header, which is the correct way to
@@ -123,6 +90,7 @@ export class ServiceAccountImpersonationProvider
       token_type: 'Bearer',
     };
 
+    const expiryTime = OAuthUtils.parseTokenExpiry(idToken);
     if (expiryTime) {
       this.tokenExpiryTime = expiryTime;
       this.cachedToken = newTokens;

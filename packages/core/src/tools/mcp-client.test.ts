@@ -11,6 +11,7 @@ import * as SdkClientStdioLib from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProviderType, type Config } from '../config/config.js';
+import { GcpJwtProvider } from '../mcp/gcp-jwt-provider.js';
 import { GoogleCredentialProvider } from '../mcp/google-auth-provider.js';
 import { MCPOAuthProvider } from '../mcp/oauth-provider.js';
 import { MCPOAuthTokenStorage } from '../mcp/oauth-token-storage.js';
@@ -462,6 +463,24 @@ describe('mcp-client', () => {
         ).rejects.toThrow(
           'URL must be provided in the config for Google Credentials provider',
         );
+      });
+    });
+
+    describe('useGcpJwtProvider', () => {
+      it('should use GcpJwtProvider when specified', async () => {
+        const transport = await createTransport(
+          'test-server',
+          {
+            httpUrl: 'http://test.googleapis.com',
+            authProviderType: AuthProviderType.GCP_JWT,
+          },
+          false,
+        );
+
+        expect(transport).toBeInstanceOf(StreamableHTTPClientTransport);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const authProvider = (transport as any)._authProvider;
+        expect(authProvider).toBeInstanceOf(GcpJwtProvider);
       });
     });
   });

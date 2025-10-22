@@ -362,4 +362,26 @@ export class OAuthUtils {
     const url = new URL(endpointUrl);
     return `${url.protocol}//${url.host}`;
   }
+
+  /**
+   * Parses a JWT string to extract its expiry time.
+   * @param idToken The JWT ID token.
+   * @returns The expiry time in **milliseconds**, or undefined if parsing fails.
+   */
+  static parseTokenExpiry(idToken: string): number | undefined {
+    try {
+      const payload = JSON.parse(
+        Buffer.from(idToken.split('.')[1], 'base64').toString(),
+      );
+
+      if (payload && typeof payload.exp === 'number') {
+        return payload.exp * 1000; // Convert seconds to milliseconds
+      }
+    } catch (e) {
+      console.error('Failed to parse ID token for expiry time with error:', e);
+    }
+
+    // Return undefined if try block fails or 'exp' is missing/invalid
+    return undefined;
+  }
 }
