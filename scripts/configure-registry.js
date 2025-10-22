@@ -110,29 +110,25 @@ function setupDev() {
 
 function setupProd() {
   console.log('Configuring your global ~/.npmrc for `prod` (npmjs.org)...');
-  if (!fs.existsSync(npmrcPath)) {
-    console.log('No ~/.npmrc file found. Already configured for prod.');
+  if (!fs.existsSync(backupPath)) {
+    console.log('No backup file (`~/.npmrc.bak`) found. No changes were made.');
+    console.log(
+      'If you have manually removed the dev configuration, you are already configured for prod.',
+    );
     return;
   }
 
-  let npmrcContent = fs.readFileSync(npmrcPath, 'utf-8');
-  const lines = npmrcContent.split('\n');
-  const filteredLines = lines.filter(
-    (line) =>
-      !line.trim().startsWith('//npm.pkg.github.com/') &&
-      !line.trim().startsWith('@google-gemini:registry') &&
-      !line.trim().startsWith('# Added by gemini-cli'),
-  );
-
-  if (lines.length === filteredLines.length) {
-    console.log('✅ Your ~/.npmrc file is already configured for prod.');
-    return;
-  }
-
-  fs.writeFileSync(npmrcPath, filteredLines.join('\n').trim() + '\n');
-  console.log(`✅ Successfully cleaned dev configuration from ~/.npmrc.`);
-  if (fs.existsSync(backupPath)) {
-    console.log(`Your original configuration was saved to ${backupPath}`);
+  try {
+    fs.copyFileSync(backupPath, npmrcPath);
+    console.log(
+      `✅ Successfully restored your configuration from ${backupPath}`,
+    );
+    // Optional: remove the backup file after successful restoration
+    // fs.unlinkSync(backupPath);
+    // console.log(`Cleaned up backup file: ${backupPath}`);
+  } catch (err) {
+    console.error(`Error restoring configuration: ${err}`);
+    process.exit(1);
   }
 }
 
