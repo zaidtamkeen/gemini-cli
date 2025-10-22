@@ -2048,8 +2048,9 @@ describe('InputPrompt', () => {
       });
 
       stdin.write('\u001B[C');
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      expect(clean(stdout.lastFrame())).toContain('←');
+      await waitFor(() => {
+        expect(clean(stdout.lastFrame())).toContain('←');
+      });
       expect(stdout.lastFrame()).toMatchSnapshot(
         'command-search-expanded-match',
       );
@@ -2057,10 +2058,10 @@ describe('InputPrompt', () => {
       stdin.write('\u001B[D');
       await waitFor(() => {
         expect(clean(stdout.lastFrame())).toContain('→');
-        expect(stdout.lastFrame()).toMatchSnapshot(
-          'command-search-collapsed-match',
-        );
       });
+      expect(stdout.lastFrame()).toMatchSnapshot(
+        'command-search-collapsed-match',
+      );
       unmount();
     });
 
@@ -2086,17 +2087,19 @@ describe('InputPrompt', () => {
 
       stdin.write('\x12');
       await waitFor(() => {
-        expect(stdout.lastFrame()).toMatchSnapshot(
-          'command-search-collapsed-match',
-        );
+        expect(stdout.lastFrame()).toContain('(r:)');
       });
+      expect(stdout.lastFrame()).toMatchSnapshot(
+        'command-search-collapsed-match',
+      );
 
       stdin.write('\u001B[C');
       await waitFor(() => {
-        expect(stdout.lastFrame()).toMatchSnapshot(
-          'command-search-expanded-match',
-        );
+        expect(stdout.lastFrame()).toContain('git commit');
       });
+      expect(stdout.lastFrame()).toMatchSnapshot(
+        'command-search-expanded-match',
+      );
 
       unmount();
     });
@@ -2296,8 +2299,9 @@ describe('InputPrompt', () => {
         <InputPrompt {...props} />,
       );
       await waitFor(() => {
-        expect(stdout.lastFrame()).toMatchSnapshot();
+        expect(stdout.lastFrame()).toContain('>');
       });
+      expect(stdout.lastFrame()).toMatchSnapshot();
       unmount();
     });
 
@@ -2307,8 +2311,9 @@ describe('InputPrompt', () => {
         <InputPrompt {...props} />,
       );
       await waitFor(() => {
-        expect(stdout.lastFrame()).toMatchSnapshot();
+        expect(stdout.lastFrame()).toContain('>');
       });
+      expect(stdout.lastFrame()).toMatchSnapshot();
       unmount();
     });
 
@@ -2318,8 +2323,9 @@ describe('InputPrompt', () => {
         <InputPrompt {...props} />,
       );
       await waitFor(() => {
-        expect(stdout.lastFrame()).toMatchSnapshot();
+        expect(stdout.lastFrame()).toContain('>');
       });
+      expect(stdout.lastFrame()).toMatchSnapshot();
       unmount();
     });
 
