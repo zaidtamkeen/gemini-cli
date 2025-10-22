@@ -477,6 +477,11 @@ export async function main() {
       debugLogger.log('Session ID: %s', sessionId);
     }
 
+    if (process.argv.findIndex((arg) => arg === '--prompt')) {
+      console.warn(
+        'Use the positional prompt instead. --prompt will be removed in a future version.',
+      );
+    }
     await runNonInteractive(nonInteractiveConfig, settings, input, prompt_id);
     // Call cleanup before process.exit, which causes cleanup to not run
     await runExitCleanup();
