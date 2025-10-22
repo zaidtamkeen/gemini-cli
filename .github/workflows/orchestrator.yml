@@ -8,22 +8,7 @@ on:
       - 'release/**'
   merge_group:
 
-permissions:
-  contents: 'read'
-  packages: 'write'
-  pull-requests: 'write'
-  security-events: 'write'
-  checks: 'write'
-  statuses: 'write'
-  actions: 'read'
-  attestations: 'read'
-  deployments: 'read'
-  discussions: 'read'
-  issues: 'read'
-  models: 'read'
-  pages: 'read'
-  repository-projects: 'read'
-  id-token: 'read'
+permissions: 'read-all'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
