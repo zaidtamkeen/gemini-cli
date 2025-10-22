@@ -44,14 +44,6 @@ jobs:
       - name: 'Prepare for GitHub release'
         run: 'node scripts/prepare-github-release.js'
 
-      - name: 'Debug .npmrc after prepare-github-release'
-        run: |
-          echo "--- Listing files in current directory after prepare-github-release ---"
-          ls -la
-          echo "--- Contents of .npmrc after prepare-github-release ---"
-          cat .npmrc
-          echo "---------------------------------------------------------"
-
       - name: 'Set CI Version'
         id: 'version'
         run: |
@@ -69,6 +61,8 @@ jobs:
           echo "---------------------------"
 
       - name: 'Publish to GitHub Packages'
+        env:
+          NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             npm publish --tag="pr-${{ github.event.pull_request.number }}"
