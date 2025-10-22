@@ -73,6 +73,7 @@ export class GcpJwtProvider implements OAuthClientProvider {
       idToken = await client.idTokenProvider.fetchIdToken(this.resourceUrl);
 
       if (!idToken || idToken.length === 0) {
+        // TODO what do I use here instead of console.error?
         console.error('Failed to get ID token from Google');
         return undefined;
       }
