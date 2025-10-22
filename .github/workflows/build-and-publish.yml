@@ -5,15 +5,15 @@ on:
   workflow_call:
     outputs:
       tag:
-        description: "The tag of the published package"
-        value: ${{ jobs.publish-bundle.outputs.tag }}
+        description: 'The tag of the published package'
+        value: '${{ jobs.publish-bundle.outputs.tag }}'
 
 jobs:
   publish-bundle:
     name: 'Publish Bundle'
     runs-on: 'gemini-cli-ubuntu-16-core'
     outputs:
-      tag: ${{ steps.get_tag.outputs.tag }}
+      tag: '${{ steps.get_tag.outputs.tag }}'
     permissions:
       contents: 'read'
       packages: 'write'
@@ -45,8 +45,11 @@ jobs:
         run: 'npm run bundle'
 
       - name: 'Get tag'
-        id: get_tag
-        run: echo "tag=ci-${{ github.sha }}" >> $GITHUB_OUTPUT
+        id: 'get_tag'
+        shell: 'bash'
+        env:
+          SHA: 'ci-${{ github.sha }}'
+        run: 'echo "tag=$SHA"'
 
       - name: 'Publish to GitHub Packages'
-        run: 'npm publish --tag=${{ steps.get_tag.outputs.tag }}'
+        run: 'npm publish --tag="${{ steps.get_tag.outputs.tag }}"'

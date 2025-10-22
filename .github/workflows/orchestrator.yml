@@ -15,18 +15,18 @@ concurrency:
 jobs:
   build-and-publish:
     name: 'Build and Publish CI Bundle'
-    uses: ./.github/workflows/build-and-publish.yml
+    uses: './.github/workflows/build-and-publish.yml'
 
   ci:
     name: 'CI Checks'
-    needs: build-and-publish
-    uses: ./.github/workflows/ci.yml
+    needs: 'build-and-publish'
+    uses: './.github/workflows/ci.yml'
     with:
-      tag: ${{ needs.build-and-publish.outputs.tag }}
+      tag: '${{ needs.build-and-publish.outputs.tag }}'
 
   e2e:
     name: 'E2E Checks'
-    needs: build-and-publish
-    uses: ./.github/workflows/e2e.yml
+    needs: 'build-and-publish'
+    uses: './.github/workflows/e2e.yml'
     with:
-      tag: ${{ needs.build-and-publish.outputs.tag }}
+      tag: '${{ needs.build-and-publish.outputs.tag }}'

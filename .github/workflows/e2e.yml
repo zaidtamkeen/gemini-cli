@@ -4,7 +4,7 @@ on:
       tag:
         description: 'The tag of the published package'
         required: true
-        type: string
+        type: 'string'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
