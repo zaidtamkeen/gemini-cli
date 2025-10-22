@@ -23,6 +23,7 @@ permissions:
   models: 'read'
   pages: 'read'
   repository-projects: 'read'
+  id-token: 'write'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
