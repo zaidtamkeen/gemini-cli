@@ -38,12 +38,19 @@ import {
   handleMaxTurnsExceededError,
 } from './utils/errors.js';
 
-export async function runNonInteractive(
-  config: Config,
-  settings: LoadedSettings,
-  input: string,
-  prompt_id: string,
-): Promise<void> {
+interface RunNonInteractiveParams {
+  config: Config;
+  settings: LoadedSettings;
+  input: string;
+  prompt_id: string;
+}
+
+export async function runNonInteractive({
+  config,
+  settings,
+  input,
+  prompt_id,
+}: RunNonInteractiveParams): Promise<void> {
   return promptIdContext.run(prompt_id, async () => {
     const consolePatcher = new ConsolePatcher({
       stderr: true,
