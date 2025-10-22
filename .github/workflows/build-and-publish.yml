@@ -52,14 +52,6 @@ jobs:
           echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
           npm version --no-git-tag-version "${NEW_VERSION}"
 
-      - name: 'Debug .npmrc'
-        run: |
-          echo "--- Listing files in current directory ---"
-          ls -la
-          echo "--- Contents of .npmrc ---"
-          cat .npmrc
-          echo "---------------------------"
-
       - name: 'Publish to GitHub Packages'
         env:
           NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
