@@ -62,6 +62,20 @@ vi.mock('./config/config.js', () => ({
   isDebugMode: vi.fn(() => false),
 }));
 
+vi.mock('./utils/readStdin.js', () => ({
+  readStdin: vi.fn().mockResolvedValue('What'),
+}));
+
+vi.mock('./validateNonInterActiveAuth.js', () => ({
+  validateNonInteractiveAuth: vi.fn().mockResolvedValue({
+    getDebugMode: () => false,
+  }),
+}));
+
+vi.mock('./nonInteractiveCli.js', () => ({
+  runNonInteractive: vi.fn(),
+}));
+
 vi.mock('read-package-up', () => ({
   readPackageUp: vi.fn().mockResolvedValue({
     packageJson: { name: 'test-pkg', version: 'test-version' },
@@ -159,6 +173,7 @@ describe('gemini.tsx main function', () => {
       callOrder.push('loadCliConfig');
       return {
         isInteractive: () => false,
+        getContentGeneratorConfig: () => ({}),
         getQuestion: () => '',
         getSandbox: () => false,
         getDebugMode: () => false,
@@ -174,6 +189,7 @@ describe('gemini.tsx main function', () => {
         getMessageBus: () => ({
           subscribe: vi.fn(),
         }),
+        getUsageStatisticsEnabled: () => false,
       } as unknown as Config;
     });
     vi.mocked(loadSettings).mockReturnValue({
@@ -245,6 +261,46 @@ describe('gemini.tsx main function', () => {
 
     // Avoid the process.exit error from being thrown.
     processExitSpy.mockRestore();
+  });
+
+  it('should print warning message when --prompt is used', async () => {
+    const consoleWarnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+    const { loadCliConfig } = await import('./config/config.js');
+    vi.mocked(loadCliConfig).mockResolvedValue({
+      isInteractive: () => false,
+      getContentGeneratorConfig: () => ({}),
+      getQuestion: () => '',
+      getSandbox: () => false,
+      getDebugMode: () => false,
+      getListExtensions: () => false,
+      getMcpServers: () => ({}),
+      initialize: vi.fn(),
+      getIdeMode: () => false,
+      getExperimentalZedIntegration: () => false,
+      getScreenReader: () => false,
+      getGeminiMdFileCount: () => 0,
+      getPolicyEngine: vi.fn(),
+      getMessageBus: () => ({
+        subscribe: vi.fn(),
+      }),
+      getUsageStatisticsEnabled: () => false,
+      getOutputFormat: () => undefined,
+    } as unknown as Config);
+    process.argv = ['--prompt'];
+
+    try {
+      await main();
+    } catch (_e) {
+      // Mocked process exit throws an error.
+    }
+
+    expect(consoleWarnSpy).toHaveBeenCalled();
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Use the positional prompt instead. --prompt will be removed in a future version.',
+    );
+    consoleWarnSpy.mockRestore();
   });
 });
 
@@ -414,6 +470,7 @@ describe('startInteractiveUI', () => {
   vi.mock('./utils/cleanup.js', () => ({
     cleanupCheckpoints: vi.fn(() => Promise.resolve()),
     registerCleanup: vi.fn(),
+    runExitCleanup: vi.fn(),
   }));
 
   vi.mock('ink', () => ({

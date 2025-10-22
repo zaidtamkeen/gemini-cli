@@ -477,7 +477,7 @@ export async function main() {
       debugLogger.log('Session ID: %s', sessionId);
     }
 
-    if (process.argv.findIndex((arg) => arg === '--prompt')) {
+    if (process.argv.findIndex((arg) => arg === '--prompt') > -1) {
       console.warn(
         'Use the positional prompt instead. --prompt will be removed in a future version.',
       );
