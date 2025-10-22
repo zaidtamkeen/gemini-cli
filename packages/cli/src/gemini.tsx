@@ -477,16 +477,14 @@ export async function main() {
       debugLogger.log('Session ID: %s', sessionId);
     }
 
-    if (process.argv.findIndex((arg) => arg === '--prompt') > -1) {
-      console.warn(
-        'Use the positional prompt instead. --prompt will be removed in a future version.',
-      );
-    }
+    const hasDeprecatedPromptArg =
+      process.argv.findIndex((arg) => arg === '--prompt') > -1;
     await runNonInteractive({
       config: nonInteractiveConfig,
       settings,
       input,
       prompt_id,
+      hasDeprecatedPromptArg,
     });
     // Call cleanup before process.exit, which causes cleanup to not run
     await runExitCleanup();

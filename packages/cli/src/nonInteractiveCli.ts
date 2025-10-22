@@ -43,6 +43,7 @@ interface RunNonInteractiveParams {
   settings: LoadedSettings;
   input: string;
   prompt_id: string;
+  hasDeprecatedPromptArg?: boolean;
 }
 
 export async function runNonInteractive({
@@ -65,6 +66,7 @@ export async function runNonInteractive({
 
     try {
       consolePatcher.patch();
+
       // Handle EPIPE errors when the output is piped to a command that closes early.
       process.stdout.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EPIPE') {
