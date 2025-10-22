@@ -61,11 +61,11 @@ describe('replace', () => {
 
     rig.createFile(fileName, originalContent);
     const prompt = `In ${fileName}, replace the exact string "<INSERT_TEXT_HERE>" with the following multi-line text block:
-    \`\`\`
-    First line
-    Second line
-    Third line
-    \`\`\``;
+  \`\`\`
+  First line
+  Second line
+  Third line
+  \`\`\``;
     await rig.run(prompt);
 
     const foundToolCall = await rig.waitForToolCall('replace');
@@ -74,6 +74,9 @@ describe('replace', () => {
     const newContent = rig.readFile(fileName);
     expect(newContent).toContain('Line A');
     expect(newContent).toContain('Line C');
+    expect(newContent).toContain('First line');
+    expect(newContent).toContain('Second line');
+    expect(newContent).toContain('Third line');
     expect(newContent).not.toContain('<INSERT_TEXT_HERE>');
     expect(newContent).toContain(newBlock);
   });
