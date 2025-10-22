@@ -1,0 +1,9 @@
+feat: Refactor release process for bundling
+
+This change refactors the release process to support a new bundle-based publishing method while maintaining backward compatibility for existing release and patch workflows.
+
+Key changes:
+- The `publish-release` composite action now includes a `use-bundle-release` input (string, default 'false') to conditionally switch between the old source-based publishing and the new bundle-based method.
+- The `release-nightly.yml` workflow is updated to use the new bundle-based process (`use-bundle-release: 'true'`).
+- The `release-manual.yml` workflow includes a new `use_bundle_release` input (defaulting to false) to allow for manual testing of either release method.
+- Existing `release-promote.yml` and patch workflows remain unchanged, ensuring they continue to use the old, non-bundled process for backward compatibility.
