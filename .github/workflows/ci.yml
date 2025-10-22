@@ -23,24 +23,9 @@ defaults:
     shell: 'bash'
 
 jobs:
-  merge_queue_skipper:
-    permissions: 'read-all'
-    name: 'Merge Queue Skipper'
-    runs-on: 'gemini-cli-ubuntu-16-core'
-    outputs:
-      skip: '${{ steps.merge-queue-ci-skipper.outputs.skip-check }}'
-    steps:
-      - id: 'merge-queue-ci-skipper'
-        uses: 'cariad-tech/merge-queue-ci-skipper@1032489e59437862c90a08a2c92809c903883772' # ratchet:cariad-tech/merge-queue-ci-skipper@main
-        with:
-          secret: '${{ secrets.GITHUB_TOKEN }}'
-
   lint:
     name: 'Lint'
     runs-on: 'gemini-cli-ubuntu-16-core'
-    needs:
-      - 'merge_queue_skipper'
-    if: "${{needs.merge_queue_skipper.outputs.skip == 'false'}}"
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
@@ -89,8 +74,6 @@ jobs:
     runs-on: 'gemini-cli-ubuntu-16-core'
     needs:
       - 'lint'
-      - 'merge_queue_skipper'
-    if: "${{needs.merge_queue_skipper.outputs.skip == 'false'}}"
     permissions:
       contents: 'read'
       checks: 'write'
@@ -117,7 +100,7 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
       - name: 'Install dependencies for testing'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
 
       - name: 'Run tests and generate reports'
         env:
@@ -153,8 +136,6 @@ jobs:
     runs-on: '${{ matrix.os }}'
     needs:
       - 'lint'
-      - 'merge_queue_skipper'
-    if: "${{needs.merge_queue_skipper.outputs.skip == 'false'}}"
     permissions:
       contents: 'read'
       checks: 'write'
@@ -184,7 +165,7 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
       - name: 'Install dependencies for testing'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
 
       - name: 'Run tests and generate reports'
         env:
@@ -226,9 +207,6 @@ jobs:
   codeql:
     name: 'CodeQL'
     runs-on: 'gemini-cli-ubuntu-16-core'
-    needs:
-      - 'merge_queue_skipper'
-    if: "${{needs.merge_queue_skipper.outputs.skip == 'false'}}"
     permissions:
       actions: 'read'
       contents: 'read'
@@ -250,9 +228,7 @@ jobs:
   # Check for changes in bundle size.
   bundle_size:
     name: 'Check Bundle Size'
-    needs:
-      - 'merge_queue_skipper'
-    if: "${{github.event_name == 'pull_request' && needs.merge_queue_skipper.outputs.skip == 'false'}}"
+    if: "${{github.event_name == 'pull_request'}}"
     runs-on: 'gemini-cli-ubuntu-16-core'
     permissions:
       contents: 'read' # For checkout
@@ -271,7 +247,7 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
       - name: 'Install bundle'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
 
       - uses: 'preactjs/compressed-size-action@946a292cd35bd1088e0d7eb92b69d1a8d5b5d76a'
         with:
@@ -284,9 +260,6 @@ jobs:
   test_windows:
     name: 'Slow Test - Win'
     runs-on: 'gemini-cli-windows-16-core'
-    needs:
-      - 'merge_queue_skipper'
-    if: "${{needs.merge_queue_skipper.outputs.skip == 'false'}}"
     continue-on-error: true
 
     steps:
@@ -326,7 +299,7 @@ jobs:
         shell: 'pwsh'
 
       - name: 'Install dependencies'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
         shell: 'pwsh'
 
       - name: 'Run tests and generate reports'

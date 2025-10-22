@@ -12,23 +12,9 @@ concurrency:
     ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}
 
 jobs:
-  merge_queue_skipper:
-    name: 'Merge Queue Skipper'
-    runs-on: 'gemini-cli-ubuntu-16-core'
-    outputs:
-      skip: '${{ steps.merge-queue-e2e-skipper.outputs.skip-check }}'
-    steps:
-      - id: 'merge-queue-e2e-skipper'
-        uses: 'cariad-tech/merge-queue-ci-skipper@1032489e59437862c90a08a2c92809c903883772' # ratchet:cariad-tech/merge-queue-ci-skipper@main
-        with:
-          secret: '${{ secrets.GITHUB_TOKEN }}'
-
   e2e_linux:
     name: 'E2E Test (Linux) - ${{ matrix.sandbox }}'
-    needs:
-      - 'merge_queue_skipper'
     if: |
-      needs.merge_queue_skipper.outputs.skip == 'false' &&
       (github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       github.event_name == 'workflow_dispatch' ||
@@ -80,10 +66,7 @@ jobs:
 
   e2e_mac:
     name: 'E2E Test (macOS)'
-    needs:
-      - 'merge_queue_skipper'
     if: |
-      needs.merge_queue_skipper.outputs.skip == 'false' &&
       (github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       github.event_name == 'workflow_dispatch' ||
@@ -115,7 +98,7 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
 
       - name: 'Install dependencies'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
 
       - name: 'Fix rollup optional dependencies on macOS'
         if: "runner.os == 'macOS'"
@@ -132,10 +115,7 @@ jobs:
 
   e2e_windows:
     name: 'Slow E2E - Win'
-    needs:
-      - 'merge_queue_skipper'
     if: |
-      needs.merge_queue_skipper.outputs.skip == 'false' &&
       (github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       github.event_name == 'workflow_dispatch' ||
@@ -189,7 +169,7 @@ jobs:
         shell: 'pwsh'
 
       - name: 'Install dependencies'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.tag }}'
+        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
         shell: 'pwsh'
 
       - name: 'Run E2E tests'
