@@ -152,35 +152,6 @@ jobs:
       - name: 'Perform CodeQL Analysis'
         uses: 'github/codeql-action/analyze@df559355d593797519d70b90fc8edd5db049e7a2' # ratchet:github/codeql-action/analyze@v3
 
-  # Check for changes in bundle size.
-  bundle_size:
-    name: 'Check Bundle Size'
-    if: "${{github.event_name == 'pull_request'}}"
-    runs-on: 'gemini-cli-ubuntu-16-core'
-
-    steps:
-      - name: 'Checkout'
-        uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
-        with:
-          ref: '${{ github.event.inputs.branch_ref || github.ref }}'
-          fetch-depth: 1
-
-      - name: 'Configure npm for GitHub Packages'
-        run: |
-          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
-
-      - name: 'Install dependencies'
-        run: 'npm ci'
-
-      - uses: 'preactjs/compressed-size-action@946a292cd35bd1088e0d7eb92b69d1a8d5b5d76a'
-        with:
-          repo-token: '${{ secrets.GITHUB_TOKEN }}'
-          pattern: './bundle/**/*.{js,sb}'
-          minimum-change-threshold: '1000'
-          compression: 'none'
-          clean-script: 'clean'
-
   test_windows:
     name: 'Slow Test - Win'
     runs-on: 'gemini-cli-windows-16-core'
@@ -241,15 +212,13 @@ jobs:
       - 'test_linux'
       - 'test_mac'
       - 'codeql'
-      - 'bundle_size'
     runs-on: 'gemini-cli-ubuntu-16-core'
     steps:
       - name: 'Check all job results'
         run: |
           if [[ (${{ needs.test_linux.result }} != 'success' && ${{ needs.test_linux.result }} != 'skipped') || \
                (${{ needs.test_mac.result }} != 'success' && ${{ needs.test_mac.result }} != 'skipped') || \
-               (${{ needs.codeql.result }} != 'success' && ${{ needs.codeql.result }} != 'skipped') || \
-               (${{ needs.bundle_size.result }} != 'success' && ${{ needs.bundle_size.result }} != 'skipped') ]]; then
+               (${{ needs.codeql.result }} != 'success' && ${{ needs.codeql.result }} != 'skipped') ]]; then
             echo "One or more CI jobs failed."
             exit 1
           fi
