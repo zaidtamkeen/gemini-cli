@@ -119,9 +119,9 @@ function setupProd() {
   const lines = npmrcContent.split('\n');
   const filteredLines = lines.filter(
     (line) =>
-      !line.includes('npm.pkg.github.com') &&
-      !line.includes('@google-gemini:registry') &&
-      !line.includes('# Added by gemini-cli'),
+      !line.trim().startsWith('//npm.pkg.github.com/') &&
+      !line.trim().startsWith('@google-gemini:registry') &&
+      !line.trim().startsWith('# Added by gemini-cli'),
   );
 
   if (lines.length === filteredLines.length) {
