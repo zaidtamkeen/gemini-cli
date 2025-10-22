@@ -3,11 +3,6 @@ name: 'Testing: CI'
 on:
   workflow_call:
 
-concurrency:
-  group: 'ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}'
-  cancel-in-progress: |-
-    ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') }}
-
 permissions:
   checks: 'write'
   contents: 'read'
