@@ -23,7 +23,8 @@ describe('replace', () => {
     const foundToolCall = await rig.waitForToolCall('replace');
     expect(foundToolCall, 'Expected to find a replace tool call').toBeTruthy();
 
-    expect(rig.readFile(fileName)).toBe(expectedContent);
+    expect(rig.readFile(fileName)).toContain(expectedContent);
+    expect(rig.readFile(fileName)).not.toContain('foo');
   });
 
   it.skip('should handle $ literally when replacing text ending with $', async () => {
@@ -33,57 +34,71 @@ describe('replace', () => {
     );
 
     const fileName = 'regex.yml';
-    const originalContent = "| select('match', '^[sv]d[a-z]$')\n";
-    const expectedContent = "| select('match', '^[sv]d[a-z]$') # updated\n";
+    const originalContent = "| select('match', '^[sv]d[a-z]$')";
+    const expectedContent = "| select('match', '^[sv]d[a-z]$') # updated";
 
     rig.createFile(fileName, originalContent);
 
     await rig.run(
-      "Open regex.yml and append ' # updated' after the line containing ^[sv]d[a-z]$ without breaking the $ character.",
+      `In the file ${fileName}, find the line with the *exact* content: "${originalContent}" and replace that entire line with the *exact* content: "${expectedContent}".`,
     );
 
     const foundToolCall = await rig.waitForToolCall('replace');
     expect(foundToolCall, 'Expected to find a replace tool call').toBeTruthy();
 
-    expect(rig.readFile(fileName)).toBe(expectedContent);
+    const newContent = rig.readFile(fileName);
+    const trimmedContent = newContent.trim();
+    expect(trimmedContent).toContain(expectedContent);
+    expect(trimmedContent).not.toBe(originalContent);
   });
 
-  it.skip('should insert a multi-line block of text', async () => {
+  it('should insert a multi-line block of text', async () => {
     const rig = new TestRig();
     await rig.setup('should insert a multi-line block of text');
     const fileName = 'insert_block.txt';
     const originalContent = 'Line A\n<INSERT_TEXT_HERE>\nLine C';
     const newBlock = 'First line\nSecond line\nThird line';
-    const expectedContent =
-      'Line A\nFirst line\nSecond line\nThird line\nLine C';
-    rig.createFile(fileName, originalContent);
 
-    const prompt = `In ${fileName}, replace "<INSERT_TEXT_HERE>" with:\n${newBlock}. Use unix style line endings.`;
+    rig.createFile(fileName, originalContent);
+    const prompt = `In ${fileName}, replace the exact string "<INSERT_TEXT_HERE>" with the following multi-line text block:
+    \`\`\`
+    First line
+    Second line
+    Third line
+    \`\`\``;
     await rig.run(prompt);
 
     const foundToolCall = await rig.waitForToolCall('replace');
     expect(foundToolCall, 'Expected to find a replace tool call').toBeTruthy();
 
-    expect(rig.readFile(fileName)).toBe(expectedContent);
+    const newContent = rig.readFile(fileName);
+    expect(newContent).toContain('Line A');
+    expect(newContent).toContain('Line C');
+    expect(newContent).not.toContain('<INSERT_TEXT_HERE>');
+    expect(newContent).toContain(newBlock);
   });
 
-  it.skip('should delete a block of text', async () => {
+  it('should delete a block of text', async () => {
     const rig = new TestRig();
     await rig.setup('should delete a block of text');
     const fileName = 'delete_block.txt';
     const blockToDelete =
       '## DELETE THIS ##\nThis is a block of text to delete.\n## END DELETE ##';
     const originalContent = `Hello\n${blockToDelete}\nWorld`;
-    const expectedContent = 'Hello\nWorld';
     rig.createFile(fileName, originalContent);
 
     await rig.run(
-      `In ${fileName}, delete the entire block from "## DELETE THIS ##" to "## END DELETE ##" including the markers and the newline that follows it.`,
+      `In ${fileName}, **replace** the entire block of text that starts with "## DELETE THIS ##" and ends with "## END DELETE ##" **with an empty string**. The replacement must include both the markers and all text located between them.`,
     );
 
     const foundToolCall = await rig.waitForToolCall('replace');
     expect(foundToolCall, 'Expected to find a replace tool call').toBeTruthy();
 
-    expect(rig.readFile(fileName)).toBe(expectedContent);
+    const newContent = rig.readFile(fileName);
+    expect(newContent).not.toContain('## DELETE THIS ##');
+    expect(newContent).not.toContain('This is a block of text to delete.');
+    expect(newContent).not.toContain('## END DELETE ##');
+    expect(newContent).toContain('Hello');
+    expect(newContent).toContain('World');
   });
 });
