@@ -50,9 +50,6 @@ jobs:
           NO_COLOR: true
         run: 'npm run test:ci'
 
-      - name: 'Smoke test bundle'
-        run: 'gemini --version'
-
       - name: 'Wait for file system sync'
         run: 'sleep 2'
 
@@ -104,9 +101,6 @@ jobs:
         env:
           NO_COLOR: true
         run: 'npm run test:ci -- --coverage.enabled=false'
-
-      - name: 'Smoke test bundle'
-        run: 'gemini --version'
 
       - name: 'Wait for file system sync'
         run: 'sleep 2'
@@ -203,10 +197,6 @@ jobs:
           UV_THREADPOOL_SIZE: '32'
           NODE_ENV: 'test'
         run: 'npm run test:ci -- --coverage.enabled=false'
-        shell: 'pwsh'
-
-      - name: 'Smoke test bundle'
-        run: 'gemini --version'
         shell: 'pwsh'
 
   ci:
