@@ -329,12 +329,11 @@ export class TestRig {
     command: string;
     initialArgs: string[];
   } {
-    const isNpmReleaseTest =
-      env['INTEGRATION_TEST_USE_INSTALLED_GEMINI'] === 'true';
-    const command = isNpmReleaseTest ? 'gemini' : 'node';
-    const initialArgs = isNpmReleaseTest
-      ? extraInitialArgs
-      : [this.bundlePath, ...extraInitialArgs];
+    const command = 'node';
+    const initialArgs = [
+      join(__dirname, '..', 'node_modules', '.bin', 'gemini'),
+      ...extraInitialArgs,
+    ];
     return { command, initialArgs };
   }
 
