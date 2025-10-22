@@ -412,6 +412,13 @@ Logging in with Google... Please restart Gemini CLI to continue.
   const handleApiKeySubmit = useCallback(
     async (apiKey: string) => {
       try {
+        if (!apiKey.trim() && apiKey.length > 1) {
+          onAuthError(
+            'API key cannot be empty string with length greater than 1.',
+          );
+          return;
+        }
+
         await ApiKeyCredentialStorage.saveApiKey(apiKey);
         await reloadApiKey();
         await config.refreshAuth(AuthType.USE_GEMINI);
