@@ -69,6 +69,11 @@ inputs:
   a2a-package-name:
     description: 'The name of the a2a package.'
     required: true
+  use-bundle-release:
+    description: 'Whether to use the new bundle-based release process.'
+    type: 'string'
+    required: false
+    default: 'false'
 runs:
   using: 'composite'
   steps:
@@ -119,6 +124,7 @@ runs:
         fi
 
     - name: '🛠️ Build and Prepare Packages'
+      if: "${{ inputs.use-bundle-release == 'false' }}"
       working-directory: '${{ inputs.working-directory }}'
       shell: 'bash'
       run: |
@@ -126,6 +132,7 @@ runs:
         npm run prepare:package
 
     - name: '🎁 Bundle'
+      if: "${{ inputs.use-bundle-release == 'true' }}"
       working-directory: '${{ inputs.working-directory }}'
       shell: 'bash'
       run: |
@@ -133,13 +140,25 @@ runs:
 
     # TODO: Refactor this github specific publishing script to be generalized based upon inputs.
     - name: '📦 Prepare for GitHub release'
-      if: "inputs.npm-registry-url == 'https://npm.pkg.github.com/'"
+      if: "inputs.npm-registry-url == 'https://npm.pkg.github.com/' && inputs.use-bundle-release == 'true'"
       working-directory: '${{ inputs.working-directory }}'
       shell: 'bash'
       run: |
         node ${{ github.workspace }}/scripts/prepare-github-release.js
 
+    - name: '📦 Publish Root Package'
+      if: "${{ inputs.use-bundle-release == 'true' }}"
+      working-directory: '${{ inputs.working-directory }}'
+      env:
+        NODE_AUTH_TOKEN: '${{ inputs.github-token }}'
+      shell: 'bash'
+      run: |
+        npm publish \
+          --dry-run="${{ inputs.dry-run }}" \
+          --no-tag
+
     - name: 'Configure npm for publishing to npm'
+      if: "${{ inputs.use-bundle-release == 'false' }}"
       uses: 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020'
       with:
         node-version-file: '${{ inputs.working-directory }}/.nvmrc'
@@ -147,6 +166,7 @@ runs:
         scope: '${{inputs.npm-registry-scope}}'
 
     - name: 'Get core Token'
+      if: "${{ inputs.use-bundle-release == 'false' }}"
       uses: './.github/actions/npm-auth-token'
       id: 'core-token'
       with:
@@ -157,6 +177,7 @@ runs:
         wombat-token-a2a-server: '${{ inputs.wombat-token-a2a-server }}'
 
     - name: '📦 Publish CORE to NPM'
+      if: "${{ inputs.use-bundle-release == 'false' }}"
       working-directory: '${{ inputs.working-directory }}'
       env:
         NODE_AUTH_TOKEN: '${{ steps.core-token.outputs.auth-token }}'
@@ -169,8 +190,8 @@ runs:
         npm dist-tag rm ${{ inputs.core-package-name }} false --silent
 
     - name: '🔗 Install latest core package'
+      if: "${{ inputs.dry-run != 'true' && inputs.use-bundle-release == 'false' }}"
       working-directory: '${{ inputs.working-directory }}'
-      if: "${{ inputs.dry-run != 'true' }}"
       shell: 'bash'
       run: |
         npm install "${{ inputs.core-package-name }}@${{ inputs.release-version }}" \
@@ -179,6 +200,7 @@ runs:
         --save-exact
 
     - name: 'Get CLI Token'
+      if: "${{ inputs.use-bundle-release == 'false' }}"
       uses: './.github/actions/npm-auth-token'
       id: 'cli-token'
       with:
@@ -189,6 +211,7 @@ runs:
         wombat-token-a2a-server: '${{ inputs.wombat-token-a2a-server }}'
 
     - name: '📦 Publish CLI'
+      if: "${{ inputs.use-bundle-release == 'false' }}"
       working-directory: '${{ inputs.working-directory }}'
       env:
         NODE_AUTH_TOKEN: '${{ steps.cli-token.outputs.auth-token }}'
@@ -200,6 +223,7 @@ runs:
         npm dist-tag rm ${{ inputs.cli-package-name }} false --silent
 
     - name: 'Get a2a-server Token'
+      if: "${{ inputs.use-bundle-release == 'false' }}"
       uses: './.github/actions/npm-auth-token'
       id: 'a2a-token'
       with:
@@ -210,6 +234,7 @@ runs:
         wombat-token-a2a-server: '${{ inputs.wombat-token-a2a-server }}'
 
     - name: '📦 Publish a2a'
+      if: "${{ inputs.use-bundle-release == 'false' }}"
       working-directory: '${{ inputs.working-directory }}'
       env:
         NODE_AUTH_TOKEN: '${{ steps.a2a-token.outputs.auth-token }}'
@@ -223,8 +248,8 @@ runs:
         npm dist-tag rm ${{ inputs.a2a-package-name }} false --silent
 
     - name: '🔬 Verify NPM release by version'
+      if: "${{ inputs.dry-run != 'true' && inputs.force-skip-tests != 'true' && inputs.use-bundle-release == 'false' }}"
       uses: './.github/actions/verify-release'
-      if: "${{ inputs.dry-run != 'true' && inputs.force-skip-tests != 'true' }}"
       with:
         npm-package: '${{ inputs.cli-package-name }}@${{ inputs.release-version }}'
         expected-version: '${{ inputs.release-version }}'
@@ -248,6 +273,13 @@ runs:
         core-package-name: '${{ inputs.core-package-name }}'
         a2a-package-name: '${{ inputs.a2a-package-name }}'
         working-directory: '${{ inputs.working-directory }}'
+
+    - name: '🔬 Verify Bundled NPM release by version'
+      if: "${{ inputs.dry-run != 'true' && inputs.force-skip-tests != 'true' && inputs.use-bundle-release == 'true' }}"
+      working-directory: '${{ inputs.working-directory }}'
+      shell: 'bash'
+      run: |
+        npx -y ${{ inputs.cli-package-name }}@${{ inputs.release-version }} --version
 
     - name: '🎉 Create GitHub Release'
       working-directory: '${{ inputs.working-directory }}'
