@@ -6,6 +6,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+process.title = 'gemini-cli';
+
 import './src/gemini.js';
 import { main } from './src/gemini.js';
 import { debugLogger, FatalError } from '@google/gemini-cli-core';
