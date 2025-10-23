@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { describe, it, expect } from 'vitest';
-import { createPolicyEngineConfig } from './policy.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+
 import type { Settings } from './settings.js';
 import {
   ApprovalMode,
@@ -13,8 +13,13 @@ import {
   WEB_FETCH_TOOL_NAME,
 } from '@google/gemini-cli-core';
 
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
 describe('createPolicyEngineConfig', () => {
   it('should return ASK_USER for write tools and ALLOW for read-only tools by default', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {};
     const config = await createPolicyEngineConfig(
       settings,
@@ -85,6 +90,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should allow tools in tools.allowed', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       tools: { allowed: ['run_shell_command'] },
     };
@@ -102,6 +108,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should deny tools in tools.exclude', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       tools: { exclude: ['run_shell_command'] },
     };
@@ -119,6 +126,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should allow tools from allowed MCP servers', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       mcp: { allowed: ['my-server'] },
     };
@@ -135,6 +143,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should deny tools from excluded MCP servers', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       mcp: { excluded: ['my-server'] },
     };
@@ -151,6 +160,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should allow tools from trusted MCP servers', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       mcpServers: {
         'trusted-server': {
@@ -188,6 +198,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should handle multiple MCP server configurations together', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       mcp: {
         allowed: ['allowed-server'],
@@ -235,6 +246,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should allow all tools in YOLO mode', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {};
     const config = await createPolicyEngineConfig(settings, ApprovalMode.YOLO);
     const rule = config.rules?.find(
@@ -244,6 +256,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should allow edit tool in AUTO_EDIT mode', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {};
     const config = await createPolicyEngineConfig(
       settings,
@@ -257,6 +270,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should prioritize exclude over allow', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       tools: { allowed: ['run_shell_command'], exclude: ['run_shell_command'] },
     };
@@ -280,6 +294,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should prioritize specific tool allows over MCP server excludes', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       mcp: { excluded: ['my-server'] },
       tools: { allowed: ['my-server__specific-tool'] },
@@ -309,6 +324,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should prioritize specific tool excludes over MCP server allows', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       mcp: { allowed: ['my-server'] },
       mcpServers: {
@@ -341,6 +357,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should handle complex priority scenarios correctly', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       tools: {
         autoAccept: true, // Priority 50 for read-only tools
@@ -395,6 +412,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should handle MCP servers with undefined trust property', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       mcpServers: {
         'no-trust-property': {
@@ -431,6 +449,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should not add write tool rules in YOLO mode', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       tools: { exclude: ['dangerous-tool'] },
     };
@@ -466,6 +485,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should handle combination of trusted server and excluded server for same name', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       mcpServers: {
         'conflicted-server': {
@@ -504,6 +524,7 @@ describe('createPolicyEngineConfig', () => {
   });
 
   it('should handle all approval modes correctly', async () => {
+    const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {};
 
     // Test DEFAULT mode
@@ -541,5 +562,131 @@ describe('createPolicyEngineConfig', () => {
     );
     expect(editRule).toBeDefined();
     expect(editRule?.priority).toBe(15);
+  });
+
+  it('should load and apply user-defined policies', async () => {
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (
+          typeof path === 'string' &&
+          path.includes('.gemini/policies/write.toml')
+        ) {
+          return `
+[[rule]]
+toolName = "run_shell_command"
+decision = "allow"
+priority = 150
+`;
+        }
+        return actualFs.readFile(path, options);
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile },
+      readFile: mockReadFile,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    const rule = config.rules?.find(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.ALLOW,
+    );
+    expect(rule).toBeDefined();
+    expect(rule?.priority).toBe(150);
+
+    vi.doUnmock('node:fs/promises');
+  });
+
+  it('should load and apply admin policies over user and default policies', async () => {
+    process.env['GEMINI_CLI_SYSTEM_SETTINGS_PATH'] = '/tmp/admin/settings.json';
+
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (
+          typeof path === 'string' &&
+          (path.includes('/tmp/admin/policies/write.toml') ||
+            path.endsWith('tmp/admin/policies/write.toml'))
+        ) {
+          return `
+[[rule]]
+toolName = "run_shell_command"
+decision = "deny"
+priority = 200
+`;
+        }
+        if (
+          typeof path === 'string' &&
+          path.includes('.gemini/policies/write.toml')
+        ) {
+          return `
+[[rule]]
+toolName = "run_shell_command"
+decision = "allow"
+priority = 150
+`;
+        }
+        return actualFs.readFile(path, options);
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile },
+      readFile: mockReadFile,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    const denyRule = config.rules?.find(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.DENY,
+    );
+    const allowRule = config.rules?.find(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.ALLOW,
+    );
+
+    expect(denyRule).toBeDefined();
+    expect(denyRule?.priority).toBe(200);
+    expect(allowRule).toBeDefined();
+    expect(allowRule?.priority).toBe(150);
+    expect(denyRule!.priority).toBeGreaterThan(allowRule!.priority!);
+
+    delete process.env['GEMINI_CLI_SYSTEM_SETTINGS_PATH'];
+    vi.doUnmock('node:fs/promises');
   });
 });

@@ -13,8 +13,9 @@ import {
   type MessageBus,
   MessageBusType,
   type UpdatePolicy,
+  Storage,
 } from '@google/gemini-cli-core';
-import { type Settings } from './settings.js';
+import { type Settings, getSystemSettingsPath } from './settings.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
@@ -23,7 +24,22 @@ import { z } from 'zod';
 
 // Get the directory name of the current module
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const POLICIES_DIR = path.resolve(__dirname, 'policies');
+
+function getPolicyDirectories(): string[] {
+  const DEFAULT_POLICIES_DIR = path.resolve(__dirname, 'policies');
+  const USER_POLICIES_DIR = Storage.getUserPoliciesDir();
+  const systemSettingsPath = getSystemSettingsPath();
+  const ADMIN_POLICIES_DIR = path.join(
+    path.dirname(systemSettingsPath),
+    'policies',
+  );
+
+  return [
+    DEFAULT_POLICIES_DIR,
+    USER_POLICIES_DIR,
+    ADMIN_POLICIES_DIR,
+  ].reverse();
+}
 
 const PolicyRuleSchema = z.object({
   toolName: z.string().optional(),
@@ -37,6 +53,7 @@ const PolicyFileSchema = z.object({
 
 async function loadPoliciesFromConfig(
   approvalMode: ApprovalMode,
+  policyDirs: string[],
 ): Promise<PolicyRule[]> {
   const filesToLoad: string[] = ['read-only.toml'];
 
@@ -52,20 +69,30 @@ async function loadPoliciesFromConfig(
 
   let rules: PolicyRule[] = [];
 
-  for (const file of filesToLoad) {
-    const filePath = path.join(POLICIES_DIR, file);
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    const parsed = toml.parse(fileContent);
-    const validationResult = PolicyFileSchema.safeParse(parsed);
-    if (!validationResult.success) {
-      // Ideally, we should have better error handling here
-      console.error(
-        `Failed to parse policy file ${file}:`,
-        validationResult.error,
-      );
-      continue;
+  for (const dir of policyDirs) {
+    for (const file of filesToLoad) {
+      const filePath = path.join(dir, file);
+      try {
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        const parsed = toml.parse(fileContent);
+        const validationResult = PolicyFileSchema.safeParse(parsed);
+        if (!validationResult.success) {
+          // Ideally, we should have better error handling here
+          console.error(
+            `Failed to parse policy file ${file}:`,
+            validationResult.error,
+          );
+          continue;
+        }
+        rules = rules.concat(validationResult.data.rule);
+      } catch (e) {
+        const error = e as NodeJS.ErrnoException;
+        // Ignore if the file doesn't exist
+        if (error.code !== 'ENOENT') {
+          console.error(`Failed to read policy file ${filePath}:`, error);
+        }
+      }
     }
-    rules = rules.concat(validationResult.data.rule);
   }
 
   return rules;
@@ -75,7 +102,12 @@ export async function createPolicyEngineConfig(
   settings: Settings,
   approvalMode: ApprovalMode,
 ): Promise<PolicyEngineConfig> {
-  const rules: PolicyRule[] = await loadPoliciesFromConfig(approvalMode);
+  const policyDirs = getPolicyDirectories();
+
+  const rules: PolicyRule[] = await loadPoliciesFromConfig(
+    approvalMode,
+    policyDirs,
+  );
 
   // Priority system for policy rules:
   // - Higher priority numbers win over lower priority numbers
