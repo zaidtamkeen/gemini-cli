@@ -46,11 +46,14 @@ async function main() {
   execSync('npm shrinkwrap', { stdio: 'inherit', cwd: inkDir });
   execSync('npm run build', { stdio: 'inherit', cwd: inkDir });
 
-  console.log('Bundling and minifying ink...');
+  console.log('Copying build artifacts to dist directory...');
   const distDir = join(inkDir, 'dist');
   mkdirSync(distDir, { recursive: true });
+  cpSync(join(inkDir, 'build'), join(distDir, 'build'), { recursive: true });
+
+  console.log('Bundling and minifying ink...');
   await esbuild.build({
-    entryPoints: [join(inkDir, 'build', 'index.js')],
+    entryPoints: [join(distDir, 'build', 'index.js')],
     bundle: true,
     minify: true,
     format: 'esm',
