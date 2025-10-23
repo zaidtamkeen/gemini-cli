@@ -22,24 +22,8 @@ on:
         required: true
 
 jobs:
-  build-sandbox-image:
-    name: 'Build Sandbox Image'
-    runs-on: 'ubuntu-latest'
-    outputs:
-      image-uri: '${{ steps.build-and-push.outputs.image-uri }}'
-    steps:
-      - id: 'build-and-push'
-        uses: './.github/workflows/build-sandbox.yml'
-        with:
-          github-actor: '${{ github.actor }}'
-          github-secret: '${{ secrets.GITHUB_TOKEN }}'
-          github-sha: '${{ github.sha }}'
-          github-ref-name: '${{ github.ref_name }}'
-          dry-run: false
-
   e2e_linux:
     name: 'E2E Test (Linux) - ${{ matrix.sandbox }}'
-    needs: 'build-sandbox-image'
     if: |
       (github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
@@ -226,7 +210,6 @@ jobs:
     needs:
       - 'e2e_linux'
       - 'e2e_mac'
-      - 'build-sandbox-image'
     runs-on: 'ubuntu-latest'
     steps:
       - name: 'Check E2E test results'
