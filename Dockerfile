@@ -10,6 +10,9 @@ ARG CLI_PACKAGE_NAME
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
 ENV PATH=$PATH:/usr/local/share/npm-global/bin
 
+# Ensure the node user has permissions to write to the global npm directory
+RUN mkdir -p /usr/local/share/npm-global && chown -R node:node /usr/local/share/npm-global
+
 # Configure npm to use GitHub Packages
 RUN --mount=type=secret,id=GITHUB_TOKEN \
     echo "${NPM_REGISTRY_SCOPE}:registry=${NPM_REGISTRY_URL}" > /home/node/.npmrc && \
