@@ -622,6 +622,36 @@ describe('Server Config (config.ts)', () => {
       await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
       expect(config.getUseModelRouter()).toBe(false);
     });
+
+    it('should keep the user-chosen model after refreshAuth, even when model router is disabled for the auth type', async () => {
+      const config = new Config({
+        ...baseParams,
+        useModelRouter: true,
+        disableModelRouterForAuth: [AuthType.USE_GEMINI],
+      });
+      const chosenModel = 'gemini-1.5-pro-latest';
+      config.setModel(chosenModel);
+
+      await config.refreshAuth(AuthType.USE_GEMINI);
+
+      expect(config.getUseModelRouter()).toBe(false);
+      expect(config.getModel()).toBe(chosenModel);
+    });
+
+    it('should keep the user-chosen model after refreshAuth, when model router is enabled for the auth type', async () => {
+      const config = new Config({
+        ...baseParams,
+        useModelRouter: true,
+        disableModelRouterForAuth: [AuthType.USE_GEMINI],
+      });
+      const chosenModel = 'gemini-1.5-pro-latest';
+      config.setModel(chosenModel);
+
+      await config.refreshAuth(AuthType.LOGIN_WITH_GOOGLE);
+
+      expect(config.getUseModelRouter()).toBe(true);
+      expect(config.getModel()).toBe(chosenModel);
+    });
   });
 
   describe('ContinueOnFailedApiCall Configuration', () => {
