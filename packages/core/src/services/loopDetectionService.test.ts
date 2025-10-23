@@ -4,15 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-  type Mock,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Config } from '../config/config.js';
 import type { GeminiClient } from '../core/client.js';
 import type { BaseLlmClient } from '../core/baseLlmClient.js';
@@ -167,7 +159,7 @@ describe('LoopDetectionService', () => {
     };
 
     it('should not detect a loop for random content', () => {
-      service.reset('');
+      service.reset('', '');
       for (let i = 0; i < 1000; i++) {
         const content = generateRandomString(10);
         const isLoop = service.addAndCheck(createContentEvent(content));
@@ -177,7 +169,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should detect a loop when a chunk of content repeats consecutively', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       let isLoop = false;
@@ -189,7 +181,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should not detect a loop if repetitions are very far apart', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
       const fillerContent = generateRandomString(500);
 
@@ -205,7 +197,7 @@ describe('LoopDetectionService', () => {
 
   describe('Content Loop Detection with Code Blocks', () => {
     it('should not detect a loop when repetitive content is inside a code block', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       service.addAndCheck(createContentEvent('```\n'));
@@ -221,7 +213,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should not detect loops when content transitions into a code block', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       // Add some repetitive content outside of code block
@@ -247,7 +239,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should skip loop detection when already inside a code block (this.inCodeBlock)', () => {
-      service.reset('');
+      service.reset('', '');
 
       // Start with content that puts us inside a code block
       service.addAndCheck(createContentEvent('Here is some code:\n```\n'));
@@ -263,7 +255,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should correctly track inCodeBlock state with multiple fence transitions', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       // Outside code block - should track content
@@ -295,7 +287,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should detect a loop when repetitive content is outside a code block', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       service.addAndCheck(createContentEvent('```'));
@@ -311,7 +303,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should handle content with multiple code blocks and no loops', () => {
-      service.reset('');
+      service.reset('', '');
       service.addAndCheck(createContentEvent('```\ncode1\n```'));
       service.addAndCheck(createContentEvent('\nsome text\n'));
       const isLoop = service.addAndCheck(createContentEvent('```\ncode2\n```'));
@@ -321,7 +313,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should handle content with mixed code blocks and looping text', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       service.addAndCheck(createContentEvent('```'));
@@ -338,7 +330,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should not detect a loop for a long code block with some repeating tokens', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatingTokens =
         'for (let i = 0; i < 10; i++) { console.log(i); }';
 
@@ -355,7 +347,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should reset tracking when a code fence is found', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
@@ -376,7 +368,7 @@ describe('LoopDetectionService', () => {
       expect(loggers.logLoopDetected).not.toHaveBeenCalled();
     });
     it('should reset tracking when a table is detected', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
@@ -396,7 +388,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should reset tracking when a list item is detected', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
@@ -416,7 +408,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should reset tracking when a heading is detected', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
@@ -436,7 +428,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should reset tracking when a blockquote is detected', () => {
-      service.reset('');
+      service.reset('', '');
       const repeatedContent = createRepetitiveContent(1, CONTENT_CHUNK_SIZE);
 
       for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
@@ -468,7 +460,7 @@ describe('LoopDetectionService', () => {
       ];
 
       listFormats.forEach((listFormat, index) => {
-        service.reset('');
+        service.reset('', '');
 
         // Build up to near threshold
         for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
@@ -505,7 +497,7 @@ describe('LoopDetectionService', () => {
       ];
 
       tableFormats.forEach((tableFormat, index) => {
-        service.reset('');
+        service.reset('', '');
 
         // Build up to near threshold
         for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
@@ -544,7 +536,7 @@ describe('LoopDetectionService', () => {
       ];
 
       headingFormats.forEach((headingFormat, index) => {
-        service.reset('');
+        service.reset('', '');
 
         // Build up to near threshold
         for (let i = 0; i < CONTENT_LOOP_THRESHOLD - 1; i++) {
@@ -580,7 +572,7 @@ describe('LoopDetectionService', () => {
 
   describe('Divider Content Detection', () => {
     it('should not detect a loop for repeating divider-like content', () => {
-      service.reset('');
+      service.reset('', '');
       const dividerContent = '-'.repeat(CONTENT_CHUNK_SIZE);
       let isLoop = false;
       for (let i = 0; i < CONTENT_LOOP_THRESHOLD + 5; i++) {
@@ -591,7 +583,7 @@ describe('LoopDetectionService', () => {
     });
 
     it('should not detect a loop for repeating complex box-drawing dividers', () => {
-      service.reset('');
+      service.reset('', '');
       const dividerContent = '╭─'.repeat(CONTENT_CHUNK_SIZE / 2);
       let isLoop = false;
       for (let i = 0; i < CONTENT_LOOP_THRESHOLD + 5; i++) {
@@ -752,47 +744,6 @@ describe('LoopDetectionService LLM Checks', () => {
     const result = await service.turnStarted(abortController.signal);
     expect(result).toBe(false);
     expect(loggers.logLoopDetected).not.toHaveBeenCalled();
-  });
-
-  it('should trim leading function calls from history before LLM check', async () => {
-    const functionCall = {
-      role: 'model',
-      parts: [{ functionCall: { name: 'someTool', args: {} } }],
-    };
-    const userMessage = {
-      role: 'user',
-      parts: [{ text: 'some user message' }],
-    };
-    const modelMessage = {
-      role: 'model',
-      parts: [{ text: 'some model response' }],
-    };
-
-    const history = [functionCall, functionCall, userMessage, modelMessage];
-    mockGeminiClient.getHistory = vi.fn().mockReturnValue(history);
-
-    mockBaseLlmClient.generateJson = vi
-      .fn()
-      .mockResolvedValue({ confidence: 0.1 });
-
-    await advanceTurns(30);
-
-    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(1);
-    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledWith(
-      expect.objectContaining({
-        contents: expect.arrayContaining([
-          userMessage,
-          modelMessage,
-          expect.objectContaining({ role: 'user' }), // The task prompt
-        ]),
-      }),
-    );
-
-    // Verify specifically that the function calls were removed from the start
-    const calledContents = (mockBaseLlmClient.generateJson as Mock).mock
-      .calls[0][0].contents;
-    expect(calledContents[0]).toEqual(userMessage);
-    expect(calledContents.length).toBe(3); // userMessage, modelMessage, taskPrompt
   });
 
   it('should not trigger LLM check when disabled for session', async () => {

@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { Content } from '@google/genai';
+import type { Content, PartListUnion } from '@google/genai';
+import { createUserContent } from '@google/genai';
 import { createHash } from 'node:crypto';
 import type { ServerGeminiStreamEvent } from '../core/turn.js';
 import { GeminiEventType } from '../core/turn.js';
@@ -19,7 +20,10 @@ import {
 } from '../telemetry/types.js';
 import type { Config } from '../config/config.js';
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/config.js';
-import { isFunctionCall } from '../utils/messageInspectors.js';
+import {
+  isFunctionCall,
+  isFunctionResponse,
+} from '../utils/messageInspectors.js';
 import { debugLogger } from '../utils/debugLogger.js';
 
 const TOOL_CALL_LOOP_THRESHOLD = 5;
@@ -73,6 +77,7 @@ For example, a series of 'tool_A' or 'tool_B' tool calls that make small, distin
 export class LoopDetectionService {
   private readonly config: Config;
   private promptId = '';
+  private userPrompt: Content | null = null;
 
   // Tool call tracking
   private lastToolCallKey: string | null = null;
@@ -377,8 +382,10 @@ export class LoopDetectionService {
       recentHistory.pop();
     }
 
-    // function call turn can only come immediately after a user turn or after a function response turn
-    while (recentHistory.length > 0 && isFunctionCall(recentHistory[0])) {
+    // A function response should follow a function call.
+    // Continuously removes leading function responses from the beginning of history
+    // until the first turn is not a function response.
+    while (recentHistory.length > 0 && isFunctionResponse(recentHistory[0])) {
       recentHistory.shift();
     }
 
@@ -396,6 +403,7 @@ export class LoopDetectionService {
     const taskPrompt = `Please analyze the conversation history to determine the possibility that the conversation is stuck in a repetitive, non-productive state. Provide your response in the requested JSON format.`;
 
     const contents = [
+      ...(this.userPrompt ? [this.userPrompt] : []),
       ...trimmedHistory,
       { role: 'user', parts: [{ text: taskPrompt }] },
     ];
@@ -455,8 +463,9 @@ export class LoopDetectionService {
   /**
    * Resets all loop detection state.
    */
-  reset(promptId: string): void {
+  reset(promptId: string, userPrompt: PartListUnion): void {
     this.promptId = promptId;
+    this.userPrompt = createUserContent(userPrompt);
     this.resetToolCallCount();
     this.resetContentTracking();
     this.resetLlmCheckTracking();
