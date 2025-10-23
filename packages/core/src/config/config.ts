@@ -558,7 +558,7 @@ export class Config {
       if (this.model === DEFAULT_GEMINI_MODEL_AUTO) {
         this.model = DEFAULT_GEMINI_MODEL;
       }
-    } else {
+    } else if (this.useModelRouter && this.model === DEFAULT_GEMINI_MODEL) {
       this.model = DEFAULT_GEMINI_MODEL_AUTO;
     }
 
