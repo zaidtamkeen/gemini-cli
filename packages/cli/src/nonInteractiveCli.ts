@@ -51,6 +51,7 @@ export async function runNonInteractive({
   settings,
   input,
   prompt_id,
+  hasDeprecatedPromptArg,
 }: RunNonInteractiveParams): Promise<void> {
   return promptIdContext.run(prompt_id, async () => {
     const consolePatcher = new ConsolePatcher({
@@ -139,6 +140,25 @@ export async function runNonInteractive({
       let currentMessages: Content[] = [{ role: 'user', parts: query }];
 
       let turnCount = 0;
+      const deprecateText =
+        'Use the positional prompt instead. This flag will be removed in a future version.\n';
+      if (hasDeprecatedPromptArg) {
+        if (streamFormatter) {
+          streamFormatter.emitEvent({
+            type: JsonStreamEventType.MESSAGE,
+            timestamp: new Date().toISOString(),
+            role: 'assistant',
+            content: deprecateText,
+            delta: true,
+          });
+        } else if (config.getOutputFormat() === OutputFormat.JSON) {
+          const formatter = new JsonFormatter();
+          const stats = uiTelemetryService.getMetrics();
+          process.stdout.write(formatter.format(deprecateText, stats));
+        } else {
+          process.stdout.write(deprecateText);
+        }
+      }
       while (true) {
         turnCount++;
         if (

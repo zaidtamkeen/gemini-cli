@@ -477,8 +477,9 @@ export async function main() {
       debugLogger.log('Session ID: %s', sessionId);
     }
 
-    const hasDeprecatedPromptArg =
-      process.argv.findIndex((arg) => arg === '--prompt') > -1;
+    const hasDeprecatedPromptArg = process.argv.some((arg) =>
+      arg.startsWith('--prompt'),
+    );
     await runNonInteractive({
       config: nonInteractiveConfig,
       settings,
