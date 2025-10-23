@@ -36,24 +36,29 @@ jobs:
     name: 'Lint'
     uses: './.github/workflows/lint.yml'
 
-  build-and-publish:
-    name: 'Build and Publish CI Bundle'
-    needs: 'lint'
-    uses: './.github/workflows/build-and-publish.yml'
-    with:
-      cli-package-name: '${{ vars.CLI_PACKAGE_NAME }}'
-      npm-registry-scope: '${{ vars.NPM_REGISTRY_SCOPE }}'
-      npm-registry-url: '${{ vars.NPM_REGISTRY_URL }}'
-
   get-vars:
     name: 'Get Environment Variables'
     runs-on: 'ubuntu-latest'
     environment: 'dev'
     outputs:
       cli-package-name: '${{ steps.get-vars.outputs.cli-package-name }}'
+      npm-registry-scope: '${{ steps.get-vars.outputs.npm-registry-scope }}'
+      npm-registry-url: '${{ steps.get-vars.outputs.npm-registry-url }}'
     steps:
       - id: 'get-vars'
-        run: 'echo ''cli-package-name=''''${{ vars.CLI_PACKAGE_NAME }}'''''' >> "$GITHUB_OUTPUT"'
+        run: |
+          echo 'cli-package-name=${{ vars.CLI_PACKAGE_NAME }}' >> "$GITHUB_OUTPUT"
+          echo 'npm-registry-scope=${{ vars.NPM_REGISTRY_SCOPE }}' >> "$GITHUB_OUTPUT"
+          echo 'npm-registry-url=${{ vars.NPM_REGISTRY_URL }}' >> "$GITHUB_OUTPUT"
+
+  build-and-publish:
+    name: 'Build and Publish CI Bundle'
+    needs: ['lint', 'get-vars']
+    uses: './.github/workflows/build-and-publish.yml'
+    with:
+      cli-package-name: '${{ needs.get-vars.outputs.cli-package-name }}'
+      npm-registry-scope: '${{ needs.get-vars.outputs.npm-registry-scope }}'
+      npm-registry-url: '${{ needs.get-vars.outputs.npm-registry-url }}'
 
   ci:
     name: 'CI Checks'
