@@ -59,6 +59,7 @@
     "pre-commit": "node scripts/pre-commit.js"
   },
   "overrides": {
+    "ink": "file:./third_party/ink",
     "wrap-ansi": "9.0.2",
     "ansi-regex": "5.0.1",
     "cliui": {
@@ -96,6 +97,7 @@
     "globals": "^16.0.0",
     "google-artifactregistry-auth": "^3.4.0",
     "husky": "^9.1.7",
+    "ink": "file:./third_party/ink",
     "json": "^11.0.0",
     "lint-staged": "^16.1.6",
     "memfs": "^4.42.0",

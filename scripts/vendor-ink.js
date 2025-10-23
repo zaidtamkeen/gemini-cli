@@ -21,7 +21,7 @@ const __dirname = dirname(__filename);
 const root = join(__dirname, '..');
 
 const inkRepo = 'https://github.com/jacob314/ink.git';
-const inkCommit = 'b9e7025a4b624c3010e18caf7f504a0279d61fe9';
+const inkCommit = '445a52b5e032d8ed2262c8ef7556d59364f0a7b8';
 const vendorDir = join(root, 'third_party');
 const inkDir = join(vendorDir, 'ink');
 
