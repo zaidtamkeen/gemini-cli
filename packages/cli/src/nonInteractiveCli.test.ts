@@ -74,6 +74,26 @@ describe('runNonInteractive', () => {
     sendMessageStream: Mock;
     getChatRecordingService: Mock;
   };
+  const MOCK_SESSION_METRICS: SessionMetrics = {
+    models: {},
+    tools: {
+      totalCalls: 0,
+      totalSuccess: 0,
+      totalFail: 0,
+      totalDurationMs: 0,
+      totalDecisions: {
+        accept: 0,
+        reject: 0,
+        modify: 0,
+        auto_accept: 0,
+      },
+      byName: {},
+    },
+    files: {
+      totalLinesAdded: 0,
+      totalLinesRemoved: 0,
+    },
+  };
 
   beforeEach(async () => {
     mockCoreExecuteToolCall = vi.mocked(executeToolCall);
@@ -502,27 +522,9 @@ describe('runNonInteractive', () => {
       createStreamFromEvents(events),
     );
     vi.mocked(mockConfig.getOutputFormat).mockReturnValue(OutputFormat.JSON);
-    const mockMetrics: SessionMetrics = {
-      models: {},
-      tools: {
-        totalCalls: 0,
-        totalSuccess: 0,
-        totalFail: 0,
-        totalDurationMs: 0,
-        totalDecisions: {
-          accept: 0,
-          reject: 0,
-          modify: 0,
-          auto_accept: 0,
-        },
-        byName: {},
-      },
-      files: {
-        totalLinesAdded: 0,
-        totalLinesRemoved: 0,
-      },
-    };
-    vi.mocked(uiTelemetryService.getMetrics).mockReturnValue(mockMetrics);
+    vi.mocked(uiTelemetryService.getMetrics).mockReturnValue(
+      MOCK_SESSION_METRICS,
+    );
 
     await runNonInteractive({
       config: mockConfig,
@@ -537,7 +539,11 @@ describe('runNonInteractive', () => {
       'prompt-id-1',
     );
     expect(processStdoutSpy).toHaveBeenCalledWith(
-      JSON.stringify({ response: 'Hello World', stats: mockMetrics }, null, 2),
+      JSON.stringify(
+        { response: 'Hello World', stats: MOCK_SESSION_METRICS },
+        null,
+        2,
+      ),
     );
   });
 
@@ -597,40 +603,9 @@ describe('runNonInteractive', () => {
       .mockReturnValueOnce(createStreamFromEvents(secondCallEvents));
 
     vi.mocked(mockConfig.getOutputFormat).mockReturnValue(OutputFormat.JSON);
-    const mockMetrics: SessionMetrics = {
-      models: {},
-      tools: {
-        totalCalls: 1,
-        totalSuccess: 1,
-        totalFail: 0,
-        totalDurationMs: 100,
-        totalDecisions: {
-          accept: 1,
-          reject: 0,
-          modify: 0,
-          auto_accept: 0,
-        },
-        byName: {
-          testTool: {
-            count: 1,
-            success: 1,
-            fail: 0,
-            durationMs: 100,
-            decisions: {
-              accept: 1,
-              reject: 0,
-              modify: 0,
-              auto_accept: 0,
-            },
-          },
-        },
-      },
-      files: {
-        totalLinesAdded: 0,
-        totalLinesRemoved: 0,
-      },
-    };
-    vi.mocked(uiTelemetryService.getMetrics).mockReturnValue(mockMetrics);
+    vi.mocked(uiTelemetryService.getMetrics).mockReturnValue(
+      MOCK_SESSION_METRICS,
+    );
 
     await runNonInteractive({
       config: mockConfig,
@@ -648,7 +623,7 @@ describe('runNonInteractive', () => {
 
     // This should output JSON with empty response but include stats
     expect(processStdoutSpy).toHaveBeenCalledWith(
-      JSON.stringify({ response: '', stats: mockMetrics }, null, 2),
+      JSON.stringify({ response: '', stats: MOCK_SESSION_METRICS }, null, 2),
     );
   });
 
@@ -664,27 +639,9 @@ describe('runNonInteractive', () => {
       createStreamFromEvents(events),
     );
     vi.mocked(mockConfig.getOutputFormat).mockReturnValue(OutputFormat.JSON);
-    const mockMetrics: SessionMetrics = {
-      models: {},
-      tools: {
-        totalCalls: 0,
-        totalSuccess: 0,
-        totalFail: 0,
-        totalDurationMs: 0,
-        totalDecisions: {
-          accept: 0,
-          reject: 0,
-          modify: 0,
-          auto_accept: 0,
-        },
-        byName: {},
-      },
-      files: {
-        totalLinesAdded: 0,
-        totalLinesRemoved: 0,
-      },
-    };
-    vi.mocked(uiTelemetryService.getMetrics).mockReturnValue(mockMetrics);
+    vi.mocked(uiTelemetryService.getMetrics).mockReturnValue(
+      MOCK_SESSION_METRICS,
+    );
 
     await runNonInteractive({
       config: mockConfig,
@@ -701,7 +658,7 @@ describe('runNonInteractive', () => {
 
     // This should output JSON with empty response but include stats
     expect(processStdoutSpy).toHaveBeenCalledWith(
-      JSON.stringify({ response: '', stats: mockMetrics }, null, 2),
+      JSON.stringify({ response: '', stats: MOCK_SESSION_METRICS }, null, 2),
     );
   });
 
@@ -1055,5 +1012,66 @@ describe('runNonInteractive', () => {
       expect.any(AbortSignal),
     );
     expect(processStdoutSpy).toHaveBeenCalledWith('file.txt');
+  });
+
+  it('should display a deprecation warning if hasDeprecatedPromptArg is true', async () => {
+    const events: ServerGeminiStreamEvent[] = [
+      { type: GeminiEventType.Content, value: 'Final Answer' },
+      {
+        type: GeminiEventType.Finished,
+        value: { reason: undefined, usageMetadata: { totalTokenCount: 10 } },
+      },
+    ];
+    mockGeminiClient.sendMessageStream.mockReturnValue(
+      createStreamFromEvents(events),
+    );
+
+    await runNonInteractive({
+      config: mockConfig,
+      settings: mockSettings,
+      input: 'Test input',
+      prompt_id: 'prompt-id-deprecated',
+      hasDeprecatedPromptArg: true,
+    });
+
+    expect(processStdoutSpy).toHaveBeenCalledWith(
+      'Use the positional prompt instead. This flag will be removed in a future version.\n',
+    );
+    expect(processStdoutSpy).toHaveBeenCalledWith('Final Answer');
+  });
+
+  it('should display a deprecation warning in JSON format', async () => {
+    const events: ServerGeminiStreamEvent[] = [
+      { type: GeminiEventType.Content, value: 'Final Answer' },
+      {
+        type: GeminiEventType.Finished,
+        value: { reason: undefined, usageMetadata: { totalTokenCount: 10 } },
+      },
+    ];
+    mockGeminiClient.sendMessageStream.mockReturnValue(
+      createStreamFromEvents(events),
+    );
+    vi.mocked(mockConfig.getOutputFormat).mockReturnValue(OutputFormat.JSON);
+    vi.mocked(uiTelemetryService.getMetrics).mockReturnValue(
+      MOCK_SESSION_METRICS,
+    );
+
+    await runNonInteractive({
+      config: mockConfig,
+      settings: mockSettings,
+      input: 'Test input',
+      prompt_id: 'prompt-id-deprecated-json',
+      hasDeprecatedPromptArg: true,
+    });
+
+    const deprecateText =
+      'Use the positional prompt instead. This flag will be removed in a future version.\n';
+    expect(processStdoutSpy).toHaveBeenCalledWith(
+      JSON.stringify(
+        { response: deprecateText, stats: MOCK_SESSION_METRICS },
+        null,
+        2,
+      ),
+    );
   });
 });
