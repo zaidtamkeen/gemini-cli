@@ -17,7 +17,6 @@ const inkRepo = 'https://github.com/jacob314/ink.git';
 const inkCommit = 'b9e7025a4b624c3010e18caf7f504a0279d61fe9';
 const vendorDir = join(root, 'third_party');
 const inkDir = join(vendorDir, 'ink');
-const cliPackageJsonPath = join(root, 'packages/cli/package.json');
 
 function main() {
   console.log(
@@ -48,16 +47,6 @@ function main() {
     inkPackageJsonPath,
     JSON.stringify(inkPackageJson, null, 2) + '\n',
   );
-
-  console.log(`Updating ${cliPackageJsonPath} to use local ink...`);
-  const packageJson = JSON.parse(readFileSync(cliPackageJsonPath, 'utf-8'));
-  const localInkPath = `file:../../third_party/ink`;
-  packageJson.dependencies.ink = localInkPath;
-  writeFileSync(
-    cliPackageJsonPath,
-    JSON.stringify(packageJson, null, 2) + '\n',
-  );
-  console.log('Successfully updated ink dependency to local path.');
 }
 
 main();
