@@ -12,6 +12,9 @@ concurrency:
   group: '${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}'
   cancel-in-progress: true
 
+env:
+  CLI_PACKAGE_NAME: '@google/gemini-cli'
+
 permissions:
   contents: 'read'
   packages: 'write'
@@ -42,6 +45,16 @@ jobs:
       npm-registry-scope: '${{ vars.NPM_REGISTRY_SCOPE }}'
       npm-registry-url: '${{ vars.NPM_REGISTRY_URL }}'
 
+  get-vars:
+    name: 'Get Environment Variables'
+    runs-on: 'ubuntu-latest'
+    environment: 'dev'
+    outputs:
+      cli-package-name: '${{ steps.get-vars.outputs.cli-package-name }}'
+    steps:
+      - id: 'get-vars'
+        run: 'echo ''cli-package-name=''''${{ vars.CLI_PACKAGE_NAME }}'''''' >> "$GITHUB_OUTPUT"'
+
   ci:
     name: 'CI Checks'
     needs: 'lint'
@@ -49,11 +62,11 @@ jobs:
 
   e2e:
     name: 'E2E Checks'
-    needs: ['build-and-publish', 'ci']
+    needs: ['build-and-publish', 'ci', 'get-vars']
     uses: './.github/workflows/e2e.yml'
     with:
       version: '${{ needs.build-and-publish.outputs.version }}'
-      cli-package-name: '${{ vars.CLI_PACKAGE_NAME }}'
+      cli-package-name: '${{ needs.get-vars.outputs.cli-package-name }}'
       image-uri: '${{ needs.build-and-publish.outputs.image-uri }}'
     secrets:
       GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
