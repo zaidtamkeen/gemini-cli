@@ -22,6 +22,8 @@ import type { FakeResponses } from './fakeContentGenerator.js';
 // responses, with the ability to write them out to a file. These files are
 // intended to be consumed later on by a FakeContentGenerator, given the
 // `--fake-responses` CLI argument.
+//
+// Note that only the "interesting" bits of the responses are actually kept.
 export class RecordingContentGenerator implements ContentGenerator {
   private recordedResponses: FakeResponses = {
     generateContent: [],
@@ -49,8 +51,8 @@ export class RecordingContentGenerator implements ContentGenerator {
       userPromptId,
     );
     this.recordedResponses.generateContent.push({
-      usageMetadata: response.usageMetadata,
       candidates: response.candidates,
+      usageMetadata: response.usageMetadata,
     } as GenerateContentResponse);
     return response;
   }
@@ -70,8 +72,8 @@ export class RecordingContentGenerator implements ContentGenerator {
     async function* stream() {
       for await (const response of realResponses) {
         streamResponses.push({
-          usageMetadata: response.usageMetadata,
           candidates: response.candidates,
+          usageMetadata: response.usageMetadata,
         } as GenerateContentResponse);
         yield response;
       }
