@@ -564,6 +564,64 @@ describe('createPolicyEngineConfig', () => {
     expect(editRule?.priority).toBe(15);
   });
 
+  it('should support argsPattern in policy rules', async () => {
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (
+          typeof path === 'string' &&
+          path.includes('.gemini/policies/write.toml')
+        ) {
+          return `
+[[rule]]
+toolName = "run_shell_command"
+argsPattern = "\\"command\\":\\"git (status|diff|log)\\""
+decision = "allow"
+priority = 150
+`;
+        }
+        return actualFs.readFile(path, options);
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile },
+      readFile: mockReadFile,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    const rule = config.rules?.find(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.ALLOW &&
+        r.priority === 150,
+    );
+    expect(rule).toBeDefined();
+    expect(rule?.argsPattern).toBeInstanceOf(RegExp);
+    expect(rule?.argsPattern?.test('{"command":"git status"}')).toBe(true);
+    expect(rule?.argsPattern?.test('{"command":"git diff"}')).toBe(true);
+    expect(rule?.argsPattern?.test('{"command":"git log"}')).toBe(true);
+    expect(rule?.argsPattern?.test('{"command":"git commit"}')).toBe(false);
+    expect(rule?.argsPattern?.test('{"command":"git push"}')).toBe(false);
+
+    vi.doUnmock('node:fs/promises');
+  });
+
   it('should load and apply user-defined policies', async () => {
     const actualFs =
       await vi.importActual<typeof import('node:fs/promises')>(

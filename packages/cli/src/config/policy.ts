@@ -43,6 +43,7 @@ function getPolicyDirectories(): string[] {
 
 const PolicyRuleSchema = z.object({
   toolName: z.string().optional(),
+  argsPattern: z.string().optional(),
   decision: z.nativeEnum(PolicyDecision),
   priority: z.number(),
 });
@@ -84,7 +85,19 @@ async function loadPoliciesFromConfig(
           );
           continue;
         }
-        rules = rules.concat(validationResult.data.rule);
+        // Convert argsPattern strings to RegExp objects
+        const parsedRules: PolicyRule[] = validationResult.data.rule.map(
+          (rule) => {
+            if (rule.argsPattern) {
+              return {
+                ...rule,
+                argsPattern: new RegExp(rule.argsPattern),
+              };
+            }
+            return rule as PolicyRule;
+          },
+        );
+        rules = rules.concat(parsedRules);
       } catch (e) {
         const error = e as NodeJS.ErrnoException;
         // Ignore if the file doesn't exist
