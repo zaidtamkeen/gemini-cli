@@ -37,29 +37,18 @@ jobs:
     name: 'Build and Publish CI Bundle'
     needs: 'lint'
     uses: './.github/workflows/build-and-publish.yml'
-
-  ci:
-    name: 'CI Checks'
-    needs: 'lint'
-    uses: './.github/workflows/ci.yml'
-
-  get-vars:
-    name: 'Get Environment Variables'
-    runs-on: 'ubuntu-latest'
-    environment: 'dev'
-    outputs:
-      cli-package-name: '${{ steps.get-vars.outputs.cli-package-name }}'
-    steps:
-      - id: 'get-vars'
-        run: 'echo ''cli-package-name=''''${{ vars.CLI_PACKAGE_NAME }}'''''' >> "$GITHUB_OUTPUT"'
+    with:
+      cli-package-name: '${{ vars.CLI_PACKAGE_NAME }}'
+      npm-registry-scope: '${{ vars.NPM_REGISTRY_SCOPE }}'
+      npm-registry-url: '${{ vars.NPM_REGISTRY_URL }}'
 
   e2e:
     name: 'E2E Checks'
-    needs: ['build-and-publish', 'get-vars']
+    needs: ['build-and-publish']
     uses: './.github/workflows/e2e.yml'
     with:
       version: '${{ needs.build-and-publish.outputs.version }}'
-      cli-package-name: '${{ needs.get-vars.outputs.cli-package-name }}'
+      cli-package-name: '${{ vars.CLI_PACKAGE_NAME }}'
       image-uri: '${{ needs.build-and-publish.outputs.image-uri }}'
     secrets:
       GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'

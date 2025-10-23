@@ -3,6 +3,19 @@ name: 'Build and Publish Bundle'
 
 on:
   workflow_call:
+    inputs:
+      cli-package-name:
+        description: 'The name of the CLI package.'
+        required: true
+        type: 'string'
+      npm-registry-scope:
+        description: 'NPM registry scope'
+        required: true
+        type: 'string'
+      npm-registry-url:
+        description: 'NPM registry URL'
+        required: true
+        type: 'string'
     outputs:
       version:
         description: 'The version of the published package'
@@ -113,9 +126,9 @@ jobs:
             --file Dockerfile \
             --tag "${IMAGE_TAG}" \
             --build-arg CLI_VERSION=${{ needs.publish-bundle.outputs.version }} \
-            --build-arg NPM_REGISTRY_SCOPE=${{ vars.NPM_REGISTRY_SCOPE }} \
-            --build-arg NPM_REGISTRY_URL=${{ vars.NPM_REGISTRY_URL }} \
-            --build-arg CLI_PACKAGE_NAME=${{ vars.CLI_PACKAGE_NAME }} \
+            --build-arg NPM_REGISTRY_SCOPE=${{ inputs.npm-registry-scope }} \
+            --build-arg NPM_REGISTRY_URL=${{ inputs.npm-registry-url }} \
+            --build-arg CLI_PACKAGE_NAME=${{ inputs.cli-package-name }} \
             --secret id=GITHUB_TOKEN
           docker push "${IMAGE_TAG}"
           echo "uri=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
