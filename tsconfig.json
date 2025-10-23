@@ -29,7 +29,7 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "ink": ["./third_party/ink/dist/build/index.js"]
+      "ink": ["./third_party/ink"]
     }
   }
 }
