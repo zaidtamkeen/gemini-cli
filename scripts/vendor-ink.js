@@ -59,9 +59,7 @@ async function main() {
     format: 'esm',
     platform: 'node',
     outfile: join(distDir, 'ink.bundle.js'),
-    // Ink uses dynamic requires for some of its dependencies, so we need to
-    // mark them as external to prevent esbuild from trying to bundle them.
-    external: ['react-devtools-core', 'yoga-layout', 'ws'],
+    external: ['react', 'react-devtools-core'],
   });
 
   console.log(
