@@ -754,4 +754,25 @@ describe('LoopDetectionService LLM Checks', () => {
     expect(result).toBe(false);
     expect(mockBaseLlmClient.generateJson).not.toHaveBeenCalled();
   });
+
+  it('should include user prompt in LLM check contents when provided', async () => {
+    const userPrompt = 'This is the user prompt';
+    service.reset('test-prompt-id', userPrompt);
+    mockBaseLlmClient.generateJson = vi
+      .fn()
+      .mockResolvedValue({ confidence: 0.1 });
+
+    await advanceTurns(30);
+
+    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(1);
+
+    // Verify order: user prompt should be first (index 0)
+    const callArgs = vi.mocked(mockBaseLlmClient.generateJson).mock.calls[0][0];
+    expect(callArgs.contents[0]).toEqual(
+      expect.objectContaining({
+        role: 'user',
+        parts: [{ text: userPrompt }],
+      }),
+    );
+  });
 });
