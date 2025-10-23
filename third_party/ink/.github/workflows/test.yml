@@ -1,0 +1,27 @@
+name: test
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  test:
+    name: Node.js ${{ matrix.node_version }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node_version:
+          - 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node_version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node_version }}
+      - run: npm install
+      - run: npm test -- --serial
+        env:
+          FORCE_COLOR: true
+          CI: false
