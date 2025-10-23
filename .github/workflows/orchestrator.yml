@@ -42,9 +42,14 @@ jobs:
       npm-registry-scope: '${{ vars.NPM_REGISTRY_SCOPE }}'
       npm-registry-url: '${{ vars.NPM_REGISTRY_URL }}'
 
+  ci:
+    name: 'CI Checks'
+    needs: 'lint'
+    uses: './.github/workflows/ci.yml'
+
   e2e:
     name: 'E2E Checks'
-    needs: ['build-and-publish']
+    needs: ['build-and-publish', 'ci']
     uses: './.github/workflows/e2e.yml'
     with:
       version: '${{ needs.build-and-publish.outputs.version }}'
