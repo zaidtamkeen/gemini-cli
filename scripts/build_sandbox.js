@@ -160,7 +160,7 @@ function buildImage(imageName, dockerfile) {
     execSync(
       `${sandboxCommand} build ${buildCommandArgs} ${
         process.env.BUILD_SANDBOX_FLAGS || ''
-      } --build-arg CLI_VERSION_ARG=${npmPackageVersion} -f "${dockerfile}" -t "${finalImageName}" .`,
+      } --build-arg CLI_VERSION=${npmPackageVersion} --build-arg NPM_REGISTRY_SCOPE=${process.env.NPM_REGISTRY_SCOPE} --build-arg NPM_REGISTRY_URL=${process.env.NPM_REGISTRY_URL} --build-arg CLI_PACKAGE_NAME=${process.env.CLI_PACKAGE_NAME} --secret id=GITHUB_TOKEN,env=GITHUB_TOKEN -f "${dockerfile}" -t "${finalImageName}" .`,
       { stdio: buildStdout, shell: shellToUse },
     );
     console.log(`built ${finalImageName}`);
