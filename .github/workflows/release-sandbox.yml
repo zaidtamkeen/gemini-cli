@@ -28,15 +28,12 @@ jobs:
           ref: '${{ github.event.inputs.ref || github.sha }}'
           fetch-depth: 0
       - name: 'Push'
-        uses: './.github/actions/push-sandbox'
+        uses: './.github/actions/push-docker'
         with:
-          dockerhub-username: '${{ secrets.DOCKER_SERVICE_ACCOUNT_NAME }}'
-          dockerhub-token: '${{ secrets.DOCKER_SERVICE_ACCOUNT_KEY }}'
           github-actor: '${{ github.actor }}'
           github-secret: '${{ secrets.GITHUB_TOKEN }}'
           github-sha: '${{ github.sha }}'
-          github-ref-name: '${{github.event.inputs.ref}}'
-          dry-run: '${{ github.event.inputs.dry-run }}'
+          ref-name: '${{github.event.inputs.ref}}'
       - name: 'Create Issue on Failure'
         if: '${{ failure() && github.event.inputs.dry-run == false }}'
         env:
