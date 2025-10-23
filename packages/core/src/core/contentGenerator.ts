@@ -107,17 +107,15 @@ export async function createContentGenerator(
   gcConfig: Config,
   sessionId?: string,
 ): Promise<ContentGenerator> {
-  if (gcConfig.fakeResponses) {
-    return FakeContentGenerator.fromFile(gcConfig.fakeResponses);
-  }
-
-  const version = process.env['CLI_VERSION'] || process.version;
-  const userAgent = `GeminiCLI/${version} (${process.platform}; ${process.arch})`;
-  const baseHeaders: Record<string, string> = {
-    'User-Agent': userAgent,
-  };
-
   const generator = await (async () => {
+    if (gcConfig.fakeResponses) {
+      return FakeContentGenerator.fromFile(gcConfig.fakeResponses);
+    }
+    const version = process.env['CLI_VERSION'] || process.version;
+    const userAgent = `GeminiCLI/${version} (${process.platform}; ${process.arch})`;
+    const baseHeaders: Record<string, string> = {
+      'User-Agent': userAgent,
+    };
     if (
       config.authType === AuthType.LOGIN_WITH_GOOGLE ||
       config.authType === AuthType.CLOUD_SHELL
