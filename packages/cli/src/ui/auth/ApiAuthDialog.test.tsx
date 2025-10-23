@@ -7,28 +7,50 @@
 import { render } from 'ink-testing-library';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { ApiAuthDialog } from './ApiAuthDialog.js';
-import { TextInput } from '../components/shared/TextInput.js';
+import { useKeypress } from '../hooks/useKeypress.js';
+import {
+  useTextBuffer,
+  type TextBuffer,
+} from '../components/shared/text-buffer.js';
 
 // Mocks
-vi.mock('../components/shared/TextInput.js', () => ({
-  TextInput: vi.fn(() => null),
+vi.mock('../hooks/useKeypress.js', () => ({
+  useKeypress: vi.fn(),
 }));
 
-const mockedTextInput = TextInput as Mock;
+vi.mock('../components/shared/text-buffer.js', () => ({
+  useTextBuffer: vi.fn(),
+}));
+
+const mockedUseKeypress = useKeypress as Mock;
+const mockedUseTextBuffer = useTextBuffer as Mock;
 
 describe('ApiAuthDialog', () => {
   const onSubmit = vi.fn();
   const onCancel = vi.fn();
+  let mockBuffer: TextBuffer;
 
   beforeEach(() => {
     vi.resetAllMocks();
+    mockBuffer = {
+      text: '',
+      lines: [''],
+      cursor: [0, 0],
+      visualCursor: [0, 0],
+      viewportVisualLines: [''],
+      handleInput: vi.fn(),
+      setText: vi.fn((newText) => {
+        mockBuffer.text = newText;
+        mockBuffer.viewportVisualLines = [newText];
+      }),
+    } as unknown as TextBuffer;
+    mockedUseTextBuffer.mockReturnValue(mockBuffer);
   });
 
   it('renders correctly', () => {
     const { lastFrame } = render(
       <ApiAuthDialog onSubmit={onSubmit} onCancel={onCancel} />,
     );
-
     expect(lastFrame()).toMatchSnapshot();
   });
 
@@ -40,29 +62,42 @@ describe('ApiAuthDialog', () => {
         defaultValue="test-key"
       />,
     );
-
-    expect(mockedTextInput).toHaveBeenCalledWith(
+    expect(mockedUseTextBuffer).toHaveBeenCalledWith(
       expect.objectContaining({
-        value: 'test-key',
+        initialText: 'test-key',
       }),
-      undefined,
     );
   });
 
   it('calls onSubmit when the text input is submitted', () => {
+    mockBuffer.text = 'submitted-key';
     render(<ApiAuthDialog onSubmit={onSubmit} onCancel={onCancel} />);
+    const keypressHandler = mockedUseKeypress.mock.calls[0][0];
 
-    const { onSubmit: onSubmitTextInput } = mockedTextInput.mock.calls[0][0];
-    onSubmitTextInput('submitted-key');
+    keypressHandler({
+      name: 'return',
+      sequence: '\r',
+      ctrl: false,
+      meta: false,
+      shift: false,
+      paste: false,
+    });
 
     expect(onSubmit).toHaveBeenCalledWith('submitted-key');
   });
 
   it('calls onCancel when the text input is cancelled', () => {
     render(<ApiAuthDialog onSubmit={onSubmit} onCancel={onCancel} />);
+    const keypressHandler = mockedUseKeypress.mock.calls[0][0];
 
-    const { onCancel: onCancelTextInput } = mockedTextInput.mock.calls[0][0];
-    onCancelTextInput();
+    keypressHandler({
+      name: 'escape',
+      sequence: '\u001b',
+      ctrl: false,
+      meta: false,
+      shift: false,
+      paste: false,
+    });
 
     expect(onCancel).toHaveBeenCalled();
   });

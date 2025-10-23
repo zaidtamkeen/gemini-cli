@@ -9,6 +9,7 @@ exports[`ApiAuthDialog > renders correctly 1`] = `
 │ You can get an API key from https://aistudio.google.com/app/apikey                               │
 │                                                                                                  │
 │ ╭──────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│ │ Paste your API key here                                                                      │ │
 │ ╰──────────────────────────────────────────────────────────────────────────────────────────────╯ │
 │                                                                                                  │
 │ (Press Enter to submit, Esc to cancel)                                                           │

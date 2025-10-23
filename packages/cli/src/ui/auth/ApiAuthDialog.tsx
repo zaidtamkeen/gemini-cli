@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
 import type React from 'react';
 import { Box, Text } from 'ink';
 import { theme } from '../semantic-colors.js';
 import { TextInput } from '../components/shared/TextInput.js';
+import { useTextBuffer } from '../components/shared/text-buffer.js';
 
 interface ApiAuthDialogProps {
   onSubmit: (apiKey: string) => void;
@@ -23,7 +23,19 @@ export function ApiAuthDialog({
   error,
   defaultValue,
 }: ApiAuthDialogProps): React.JSX.Element {
-  const [apiKey, setApiKey] = useState(defaultValue || '');
+  const buffer = useTextBuffer({
+    initialText: defaultValue || '',
+    initialCursorOffset: defaultValue?.length || 0,
+    viewport: {
+      width: 100, // Fixed width is sufficient for this dialog
+      height: 1,
+    },
+    isValidPath: () => false, // No path validation needed for API key
+  });
+
+  const handleSubmit = (value: string) => {
+    onSubmit(value);
+  };
 
   return (
     <Box
@@ -56,9 +68,8 @@ export function ApiAuthDialog({
           flexGrow={1}
         >
           <TextInput
-            value={apiKey}
-            onChange={setApiKey}
-            onSubmit={onSubmit}
+            buffer={buffer}
+            onSubmit={handleSubmit}
             onCancel={onCancel}
             placeholder="Paste your API key here"
           />

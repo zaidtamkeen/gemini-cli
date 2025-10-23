@@ -5,17 +5,18 @@
  */
 
 import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import type { Key } from '../../hooks/useKeypress.js';
 import { Text, Box } from 'ink';
 import { useKeypress } from '../../hooks/useKeypress.js';
 import chalk from 'chalk';
 import { theme } from '../../semantic-colors.js';
+import type { TextBuffer } from './text-buffer.js';
+import { cpSlice } from '../../utils/textUtils.js';
 
 export interface TextInputProps {
-  value: string;
+  buffer: TextBuffer;
   placeholder?: string;
-  onChange: (value: string) => void;
   onSubmit?: (value: string) => void;
   onCancel?: () => void;
   mask?: string;
@@ -23,125 +24,65 @@ export interface TextInputProps {
 }
 
 export function TextInput({
-  value,
+  buffer,
   placeholder = '',
-  onChange,
   onSubmit,
   onCancel,
   mask,
   focus = true,
 }: TextInputProps): React.JSX.Element {
-  const [cursorOffset, setCursorOffset] = useState(value.length);
-  const [isExiting, setIsExiting] = useState(false);
+  const { text, handleInput, visualCursor, viewportVisualLines } = buffer;
 
-  useEffect(() => {
-    // When the controlled value changes, update the cursor position if it's
-    // out of bounds. This can happen if the parent component changes the
-    // value programmatically.
-    if (cursorOffset > value.length) {
-      setCursorOffset(value.length);
-    }
-  }, [value, cursorOffset]);
+  const handleKeyPress = useCallback(
+    (key: Key) => {
+      if (key.name === 'escape') {
+        onCancel?.();
+        return;
+      }
 
-  useEffect(() => {
-    if (isExiting && onCancel) {
-      // Give Ink a moment to run the useInput cleanup before we trigger the
-      // parent state change that unmounts this component.
-      const timer = setTimeout(() => {
-        onCancel();
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-    return;
-  }, [isExiting, onCancel]);
+      if (key.name === 'return') {
+        onSubmit?.(text);
+        return;
+      }
 
-  useKeypress(
-    useCallback(
-      (key: Key) => {
-        if (key.name === 'escape') {
-          setIsExiting(true);
-          return;
-        }
-
-        if (key.name === 'return') {
-          onSubmit?.(value);
-          return;
-        }
-
-        if (key.name === 'backspace' || key.name === 'delete') {
-          if (cursorOffset > 0) {
-            const newValue =
-              value.slice(0, cursorOffset - 1) + value.slice(cursorOffset);
-            setCursorOffset(cursorOffset - 1);
-            onChange(newValue);
-          }
-          return;
-        }
-
-        if (key.name === 'left') {
-          if (cursorOffset > 0) {
-            setCursorOffset(cursorOffset - 1);
-          }
-          return;
-        }
-
-        if (key.name === 'right') {
-          if (cursorOffset < value.length) {
-            setCursorOffset(cursorOffset + 1);
-          }
-          return;
-        }
-
-        // Normal character input
-        if (key.sequence && !key.ctrl && !key.meta) {
-          const newValue =
-            value.slice(0, cursorOffset) +
-            key.sequence +
-            value.slice(cursorOffset);
-          setCursorOffset(cursorOffset + key.sequence.length);
-          onChange(newValue);
-        }
-      },
-      [value, cursorOffset, onChange, onSubmit, setIsExiting],
-    ),
-    { isActive: focus && !isExiting },
+      handleInput(key);
+    },
+    [handleInput, onCancel, onSubmit, text],
   );
 
-  const renderedValue = mask ? mask.repeat(value.length) : value;
-  const placeholderText =
-    value.length === 0 && placeholder ? (
-      <Text color={theme.text.secondary}>{placeholder}</Text>
-    ) : null;
+  useKeypress(handleKeyPress, { isActive: focus });
 
-  // Render cursor
-  let textWithCursor;
-  if (focus) {
-    const charAtCursor = renderedValue[cursorOffset] || ' ';
-    textWithCursor = (
+  const showPlaceholder = text.length === 0 && placeholder;
+
+  // Since this is a single-line input, we only care about the first line.
+  const lineText = viewportVisualLines[0] || '';
+  const cursorCol = visualCursor[1];
+
+  let content;
+  if (showPlaceholder) {
+    content = focus ? (
       <Text>
-        {renderedValue.slice(0, cursorOffset)}
-        {chalk.inverse(charAtCursor)}
-        {renderedValue.slice(cursorOffset + 1)}
+        {chalk.inverse(placeholder[0] || ' ')}
+        <Text color={theme.text.secondary}>{placeholder.slice(1)}</Text>
       </Text>
+    ) : (
+      <Text color={theme.text.secondary}>{placeholder}</Text>
     );
   } else {
-    textWithCursor = <Text>{renderedValue}</Text>;
+    const maskedLine = mask ? mask.repeat(lineText.length) : lineText;
+    if (focus) {
+      const charAtCursor = cpSlice(maskedLine, cursorCol, cursorCol + 1) || ' ';
+      content = (
+        <Text>
+          {cpSlice(maskedLine, 0, cursorCol)}
+          {chalk.inverse(charAtCursor)}
+          {cpSlice(maskedLine, cursorCol + 1)}
+        </Text>
+      );
+    } else {
+      content = <Text>{maskedLine}</Text>;
+    }
   }
 
-  return (
-    <Box>
-      {placeholderText ? (
-        focus ? (
-          <Text>
-            {chalk.inverse(placeholder[0] || ' ')}
-            <Text color={theme.text.secondary}>{placeholder.slice(1)}</Text>
-          </Text>
-        ) : (
-          placeholderText
-        )
-      ) : (
-        textWithCursor
-      )}
-    </Box>
-  );
+  return <Box>{content}</Box>;
 }

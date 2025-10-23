@@ -61,8 +61,8 @@ export async function createContentGeneratorConfig(
   authType: AuthType | undefined,
 ): Promise<ContentGeneratorConfig> {
   const geminiApiKey =
-    process.env['GEMINI_API_KEY'] ||
     (await ApiKeyCredentialStorage.loadApiKey()) ||
+    process.env['GEMINI_API_KEY'] ||
     undefined;
   const googleApiKey = process.env['GOOGLE_API_KEY'] || undefined;
   const googleCloudProject =
