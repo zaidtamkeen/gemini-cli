@@ -338,7 +338,7 @@ describe('run_shell_command', () => {
     }
   });
 
-  it.skip('should reject commands not on the allowlist', async () => {
+  it('should reject commands not on the allowlist', async () => {
     const rig = new TestRig();
     await rig.setup('should reject commands not on the allowlist');
 
@@ -484,7 +484,7 @@ describe('run_shell_command', () => {
     }
   });
 
-  it('should run a platform-specific file listing command', async () => {
+  it.skip('should run a platform-specific file listing command', async () => {
     const rig = new TestRig();
     await rig.setup('should run platform-specific file listing');
     const fileName = `test-file-${Math.random().toString(36).substring(7)}.txt`;

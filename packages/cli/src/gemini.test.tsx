@@ -170,6 +170,10 @@ describe('gemini.tsx main function', () => {
         getScreenReader: () => false,
         getGeminiMdFileCount: () => 0,
         getProjectRoot: () => '/',
+        getPolicyEngine: vi.fn(),
+        getMessageBus: () => ({
+          subscribe: vi.fn(),
+        }),
       } as unknown as Config;
     });
     vi.mocked(loadSettings).mockReturnValue({
@@ -301,6 +305,10 @@ describe('gemini.tsx main function kitty protocol', () => {
       getExperimentalZedIntegration: () => false,
       getScreenReader: () => false,
       getGeminiMdFileCount: () => 0,
+      getPolicyEngine: vi.fn(),
+      getMessageBus: () => ({
+        subscribe: vi.fn(),
+      }),
     } as unknown as Config);
     vi.mocked(loadSettings).mockReturnValue({
       errors: [],
@@ -315,21 +323,17 @@ describe('gemini.tsx main function kitty protocol', () => {
     vi.mocked(parseArguments).mockResolvedValue({
       model: undefined,
       sandbox: undefined,
-      sandboxImage: undefined,
       debug: undefined,
       prompt: undefined,
       promptInteractive: undefined,
       query: undefined,
-      showMemoryUsage: undefined,
       yolo: undefined,
       approvalMode: undefined,
-      checkpointing: undefined,
       allowedMcpServerNames: undefined,
       allowedTools: undefined,
       experimentalAcp: undefined,
       extensions: undefined,
       listExtensions: undefined,
-      proxy: undefined,
       includeDirectories: undefined,
       screenReader: undefined,
       useSmartEdit: undefined,
