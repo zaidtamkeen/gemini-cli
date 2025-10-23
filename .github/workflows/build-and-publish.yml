@@ -104,8 +104,18 @@ jobs:
 
       - name: 'Build and Push Sandbox Image'
         id: 'docker_build'
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         shell: 'bash'
         run: |
           IMAGE_TAG="ghcr.io/${{ github.repository }}/sandbox:${{ needs.publish-bundle.outputs.version }}"
-          node scripts/build_sandbox.js --image "${IMAGE_TAG}"
+          docker build . \
+            --file Dockerfile \
+            --tag "${IMAGE_TAG}" \
+            --build-arg CLI_VERSION=${{ needs.publish-bundle.outputs.version }} \
+            --build-arg NPM_REGISTRY_SCOPE=${{ vars.NPM_REGISTRY_SCOPE }} \
+            --build-arg NPM_REGISTRY_URL=${{ vars.NPM_REGISTRY_URL }} \
+            --build-arg CLI_PACKAGE_NAME=${{ vars.CLI_PACKAGE_NAME }} \
+            --secret id=GITHUB_TOKEN
           docker push "${IMAGE_TAG}"
+          echo "uri=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
