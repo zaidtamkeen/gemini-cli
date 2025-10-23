@@ -19,10 +19,7 @@ import {
 } from '../telemetry/types.js';
 import type { Config } from '../config/config.js';
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/config.js';
-import {
-  isFunctionCall,
-  isFunctionResponse,
-} from '../utils/messageInspectors.js';
+import { isFunctionCall } from '../utils/messageInspectors.js';
 import { debugLogger } from '../utils/debugLogger.js';
 
 const TOOL_CALL_LOOP_THRESHOLD = 5;
@@ -380,10 +377,8 @@ export class LoopDetectionService {
       recentHistory.pop();
     }
 
-    // A function response should follow a function call.
-    // Continuously removes leading function responses from the beginning of history
-    // until the first turn is not a function response.
-    while (recentHistory.length > 0 && isFunctionResponse(recentHistory[0])) {
+    // function call turn can only come immediately after a user turn or after a function response turn
+    while (recentHistory.length > 0 && isFunctionCall(recentHistory[0])) {
       recentHistory.shift();
     }
 

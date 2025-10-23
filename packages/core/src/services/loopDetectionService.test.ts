@@ -4,7 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from 'vitest';
 import type { Config } from '../config/config.js';
 import type { GeminiClient } from '../core/client.js';
 import type { BaseLlmClient } from '../core/baseLlmClient.js';
@@ -744,6 +752,47 @@ describe('LoopDetectionService LLM Checks', () => {
     const result = await service.turnStarted(abortController.signal);
     expect(result).toBe(false);
     expect(loggers.logLoopDetected).not.toHaveBeenCalled();
+  });
+
+  it('should trim leading function calls from history before LLM check', async () => {
+    const functionCall = {
+      role: 'model',
+      parts: [{ functionCall: { name: 'someTool', args: {} } }],
+    };
+    const userMessage = {
+      role: 'user',
+      parts: [{ text: 'some user message' }],
+    };
+    const modelMessage = {
+      role: 'model',
+      parts: [{ text: 'some model response' }],
+    };
+
+    const history = [functionCall, functionCall, userMessage, modelMessage];
+    mockGeminiClient.getHistory = vi.fn().mockReturnValue(history);
+
+    mockBaseLlmClient.generateJson = vi
+      .fn()
+      .mockResolvedValue({ confidence: 0.1 });
+
+    await advanceTurns(30);
+
+    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(1);
+    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contents: expect.arrayContaining([
+          userMessage,
+          modelMessage,
+          expect.objectContaining({ role: 'user' }), // The task prompt
+        ]),
+      }),
+    );
+
+    // Verify specifically that the function calls were removed from the start
+    const calledContents = (mockBaseLlmClient.generateJson as Mock).mock
+      .calls[0][0].contents;
+    expect(calledContents[0]).toEqual(userMessage);
+    expect(calledContents.length).toBe(3); // userMessage, modelMessage, taskPrompt
   });
 
   it('should not trigger LLM check when disabled for session', async () => {
