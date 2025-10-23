@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type {
-  CountTokensResponse,
+import {
+  type CountTokensResponse,
   GenerateContentResponse,
-  GenerateContentParameters,
-  CountTokensParameters,
-  EmbedContentResponse,
-  EmbedContentParameters,
+  type GenerateContentParameters,
+  type CountTokensParameters,
+  type EmbedContentResponse,
+  type EmbedContentParameters,
 } from '@google/genai';
 import { promises } from 'node:fs';
 import type { ContentGenerator } from './contentGenerator.js';
@@ -40,8 +40,14 @@ export class FakeContentGenerator implements ContentGenerator {
 
   constructor(responses: FakeResponses) {
     this.responses = {
-      generateContent: responses.generateContent ?? [],
-      generateContentStream: responses.generateContentStream ?? [],
+      generateContent:
+        responses.generateContent?.map((response) =>
+          Object.setPrototypeOf(response, GenerateContentResponse.prototype),
+        ) ?? [],
+      generateContentStream:
+        responses.generateContentStream?.map((response) =>
+          Object.setPrototypeOf(response, GenerateContentResponse.prototype),
+        ) ?? [],
       countTokens: responses.countTokens ?? [],
       embedContent: responses.embedContent ?? [],
     };
