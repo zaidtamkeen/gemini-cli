@@ -53,28 +53,14 @@ jobs:
       - id: 'get-vars'
         run: 'echo ''cli-package-name=''''${{ vars.CLI_PACKAGE_NAME }}'''''' >> "$GITHUB_OUTPUT"'
 
-  build-sandbox:
-    name: 'Build Sandbox Image'
-    needs: 'lint'
-    uses: './.github/workflows/build-sandbox.yml'
-    with:
-      github-actor: '${{ github.actor }}'
-      github-secret: '${{ github.token }}'
-      github-sha: '${{ github.sha }}'
-      github-ref-name: '${{ github.ref_name }}'
-      dry-run: false
-      npm-registry-scope: '${{ vars.NPM_REGISTRY_SCOPE }}'
-      npm-registry-url: '${{ vars.NPM_REGISTRY_URL }}'
-      cli-package-name: '${{ vars.CLI_PACKAGE_NAME }}'
-
   e2e:
     name: 'E2E Checks'
-    needs: ['build-and-publish', 'get-vars', 'build-sandbox']
+    needs: ['build-and-publish', 'get-vars']
     uses: './.github/workflows/e2e.yml'
     with:
       version: '${{ needs.build-and-publish.outputs.version }}'
       cli-package-name: '${{ needs.get-vars.outputs.cli-package-name }}'
-      image-uri: '${{ needs.build-sandbox.outputs.image-uri }}'
+      image-uri: '${{ needs.build-and-publish.outputs.image-uri }}'
     secrets:
       GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
 
