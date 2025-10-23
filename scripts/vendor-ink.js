@@ -5,7 +5,7 @@
  */
 
 import { execSync, execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync, cpSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,6 +38,23 @@ function main() {
   execSync('npm install', { stdio: 'inherit', cwd: inkDir });
   execSync('npm shrinkwrap', { stdio: 'inherit', cwd: inkDir });
   execSync('npm run build', { stdio: 'inherit', cwd: inkDir });
+
+  console.log(
+    'Moving build artifacts to a temp directory and removing all other files...',
+  );
+  const tmpDir = join(vendorDir, 'tmp_ink');
+  cpSync(join(inkDir, 'build'), tmpDir, { recursive: true });
+  const packageJson = readFileSync(join(inkDir, 'package.json'), 'utf-8');
+  const license = readFileSync(join(inkDir, 'license'), 'utf-8');
+
+  execSync('git rm -rf .', { stdio: 'inherit', cwd: inkDir });
+
+  console.log('Restoring build artifacts, license, and package.json...');
+  rmSync(join(inkDir, 'build'), { recursive: true, force: true });
+  cpSync(tmpDir, join(inkDir, 'build'), { recursive: true });
+  rmSync(tmpDir, { recursive: true, force: true });
+  writeFileSync(join(inkDir, 'package.json'), packageJson);
+  writeFileSync(join(inkDir, 'license'), license);
 
   console.log('Removing prepare script from ink package.json...');
   const inkPackageJsonPath = join(inkDir, 'package.json');
