@@ -78,6 +78,11 @@ async function main() {
   writeFileSync(join(inkDir, 'package.json'), packageJson);
   writeFileSync(join(inkDir, 'license'), license);
 
+  console.log('Cleaning up .git and node_modules directories...');
+  rmSync(join(inkDir, '.git'), { recursive: true, force: true });
+  rmSync(join(inkDir, 'node_modules'), { recursive: true, force: true });
+  rmSync(join(inkDir, 'build'), { recursive: true, force: true });
+
   console.log('Removing prepare script from ink package.json...');
   const inkPackageJsonPath = join(inkDir, 'package.json');
   const inkPackageJson = JSON.parse(readFileSync(inkPackageJsonPath, 'utf-8'));
