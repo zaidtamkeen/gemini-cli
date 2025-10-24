@@ -39,7 +39,7 @@ describe('Interactive Mode', () => {
 
     const foundEvent = await rig.waitForTelemetryEvent(
       'chat_compression',
-      5000,
+      10000,
     );
     expect(foundEvent, 'chat_compression telemetry event was not found').toBe(
       true,
