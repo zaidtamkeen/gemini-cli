@@ -63,8 +63,7 @@
     "check:lockfile": "node scripts/check-lockfile.js",
     "clean": "node scripts/clean.js",
     "pre-commit": "node scripts/pre-commit.js",
-    "use-dev": "node scripts/configure-registry.js dev",
-    "use-prod": "node scripts/configure-registry.js prod"
+    "setup-npmrc": "node scripts/configure-registry.js"
   },
   "overrides": {
     "wrap-ansi": "9.0.2",

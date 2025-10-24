@@ -6,18 +6,16 @@
 
 /**
  * @fileoverview This script automates the configuration of the user's
- * global .npmrc file to switch between the production npm registry (npmjs.org)
- * and the development registry (GitHub Packages).
+ * global .npmrc file to work with this repository's development workflow.
  *
  * Rationale:
- * While a developer could manually configure their .npmrc file, this script
- * provides a consistent, automated, and less error-prone way to manage
- * registry configurations. It simplifies the process of switching between
- * consuming production packages and pre-release packages for development
- * and testing, which is a common workflow in this project.
+ * This project uses a hybrid registry setup:
+ * - Production packages (`@google/gemini-cli`) are on the public npmjs.org registry.
+ * - Pre-release packages (`@google-gemini/gemini-cli`) are on the GitHub Packages registry.
  *
- * The script also handles backing up and restoring the user's existing
- * .npmrc file, preventing accidental data loss.
+ * This script provides a consistent, automated, and less error-prone way to
+ * configure the necessary scopes and authentication for both registries. It
+ * backs up the user's existing .npmrc, making it a safe, one-time setup.
  */
 
 import fs from 'node:fs';
@@ -25,14 +23,14 @@ import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
 
-const arg = process.argv[2];
 const homedir = os.homedir();
 const npmrcPath = path.join(homedir, '.npmrc');
 const backupPath = path.join(homedir, '.npmrc.bak');
 
 const GITHUB_REGISTRY_URL = 'https://npm.pkg.github.com/';
 const GITHUB_SCOPE = '@google-gemini';
-const REGISTRY_LINE = `${GITHUB_SCOPE}:registry=${GITHUB_REGISTRY_URL}`;
+const PROD_SCOPE = '@google';
+const PROD_REGISTRY_URL = 'https://registry.npmjs.org/';
 
 function checkGhCli() {
   try {
@@ -78,10 +76,8 @@ function getGhAuthToken() {
   }
 }
 
-function setupDev() {
-  console.log(
-    'Configuring your global ~/.npmrc for `dev` (GitHub Packages)...',
-  );
+function setupNpmrc() {
+  console.log('Configuring your global ~/.npmrc for development...');
 
   if (!checkGhCli() || !getGhAuthStatus()) {
     process.exit(1);
@@ -92,68 +88,30 @@ function setupDev() {
     process.exit(1);
   }
 
-  const AUTH_LINE = `//npm.pkg.github.com/:_authToken=${token}`;
-  let npmrcContent = '';
-
-  if (fs.existsSync(npmrcPath)) {
-    npmrcContent = fs.readFileSync(npmrcPath, 'utf-8');
-    if (npmrcContent.includes(REGISTRY_LINE)) {
-      console.log('✅ Your ~/.npmrc file is already configured for dev.');
-      return;
-    }
-    // Create a backup if one doesn't already exist
-    if (!fs.existsSync(backupPath)) {
-      fs.copyFileSync(npmrcPath, backupPath);
-      console.log(`Backed up your existing configuration to ${backupPath}`);
-    }
+  // Back up the original .npmrc if it exists and a backup doesn't already.
+  if (fs.existsSync(npmrcPath) && !fs.existsSync(backupPath)) {
+    fs.copyFileSync(npmrcPath, backupPath);
+    console.log(`Backed up your existing configuration to ${backupPath}`);
   }
 
   const newContent = [
-    npmrcContent,
-    `\n# Added by gemini-cli for dev environment`,
-    REGISTRY_LINE,
-    AUTH_LINE,
-  ]
-    .join('\n')
-    .trim();
+    `# Added by gemini-cli setup`,
+    `# Configures scopes for both production and development registries`,
+    ``,
+    `# Production packages from npmjs.org`,
+    `${PROD_SCOPE}:registry=${PROD_REGISTRY_URL}`,
+    ``,
+    `# Pre-release packages from GitHub Packages`,
+    `${GITHUB_SCOPE}:registry=${GITHUB_REGISTRY_URL}`,
+    `//${new URL(GITHUB_REGISTRY_URL).hostname}/:_authToken=${token}`,
+    ``,
+  ].join('\n');
 
-  fs.writeFileSync(npmrcPath, newContent + '\n');
-  console.log(`✅ Successfully updated your ~/.npmrc file.`);
+  fs.writeFileSync(npmrcPath, newContent);
+  console.log(`✅ Successfully configured your ~/.npmrc file.`);
   console.log(
-    'You can now install pre-release packages, e.g., `npm install -g @google-gemini/gemini-cli@<version>`',
+    'You can now install both production and pre-release packages.',
   );
 }
 
-function setupProd() {
-  console.log('Configuring your global ~/.npmrc for `prod` (npmjs.org)...');
-  if (!fs.existsSync(backupPath)) {
-    console.log('No backup file (`~/.npmrc.bak`) found. No changes were made.');
-    console.log(
-      'If you have manually removed the dev configuration, you are already configured for prod.',
-    );
-    return;
-  }
-
-  try {
-    fs.copyFileSync(backupPath, npmrcPath);
-    console.log(
-      `✅ Successfully restored your configuration from ${backupPath}`,
-    );
-    // Optional: remove the backup file after successful restoration
-    // fs.unlinkSync(backupPath);
-    // console.log(`Cleaned up backup file: ${backupPath}`);
-  } catch (err) {
-    console.error(`Error restoring configuration: ${err}`);
-    process.exit(1);
-  }
-}
-
-if (arg === 'dev') {
-  setupDev();
-} else if (arg === 'prod') {
-  setupProd();
-} else {
-  console.error('Invalid argument. Please use `dev` or `prod`.');
-  console.error('Usage: node scripts/configure-registry.js <dev|prod>');
-  process.exit(1);
-}
+setupNpmrc();

@@ -279,21 +279,27 @@ npm run lint
 - **Imports:** Pay special attention to import paths. The project uses ESLint to
   enforce restrictions on relative imports between packages.
 
-### Working with Pre-Release Versions (Development)
+### Setting Up Your NPM Environment
 
-This project uses **GitHub Packages** to host development and pre-release
-versions of the CLI. To install these versions, you must configure your
-user-level `~/.npmrc` file to authenticate with the GitHub registry.
+**Note:** The following instructions are intended for contributors who need to
+work with pre-release versions hosted on the private GitHub Packages registry.
+General contributors who only use the public `npmjs.org` registry may not need
+to perform this setup.
 
-We have created a script to automate this process for you.
+This project uses a hybrid registry model:
+- Production packages (e.g., `@google/gemini-cli`) are published to `npmjs.org`.
+- Pre-release and development packages (e.g., `@google-gemini/gemini-cli`) are
+  published to **GitHub Packages**.
 
-#### Setting Up Your Environment for Development (Recommended)
+To work with both registries, you need to configure your user-level `~/.npmrc`
+file to authenticate with GitHub Packages. We have a script to automate this.
 
-To automatically configure your environment to use the GitHub Packages registry,
-run the following command:
+#### Configure Your `~/.npmrc` File
+
+Run the following command to automatically configure your `~/.npmrc` file:
 
 ```bash
-npm run use-dev
+npm run setup-npmrc
 ```
 
 This command will:
@@ -302,23 +308,12 @@ This command will:
     installed and that you are logged in.
 2.  **Back up** your existing `~/.npmrc` to `~/.npmrc.bak` if a backup doesn't
     already exist.
-3.  **Automatically add** the necessary configuration to your `~/.npmrc` file.
+3.  **Overwrite** your `~/.npmrc` with the correct configuration to pull
+    packages from both `npmjs.org` and `npm.pkg.github.com` based on their scope.
 
-This setup is required for installing pre-release packages with the
-`@google-gemini` scope, both locally within a project and globally (e.g.,
-`npm install -g @google-gemini/gemini-cli@<version>`).
-
-#### Switching Back to the Production Registry
-
-To automatically remove the development configuration and revert to the public
-npm registry (`npmjs.org`), you can run:
-
-```bash
-npm run use-prod
-```
-
-This command will safely remove the lines added by the `use-dev` script from
-your `~/.npmrc` file.
+After running this, you can install packages from both registries without any
+further configuration. If your GitHub token expires, you can simply run the
+command again to update it.
 
 ### Project Structure
 

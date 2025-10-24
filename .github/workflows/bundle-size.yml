@@ -30,13 +30,15 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'npm'
 
-      - name: 'Configure npm for GitHub Packages'
-        run: |
-          echo "@google-gemini:registry=https://npm.pkg.github.com/" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+      - name: 'Setup NPMRC'
+        uses: './.github/actions/setup-npmrc'
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
 
       - name: 'Install dependencies'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
+        env:
+          VERSION: '${{ inputs.version }}'
+        run: 'npm install @google-gemini/gemini-cli@${{ env.VERSION }}'
 
       - name: 'Check Bundle Size'
         uses: 'preactjs/compressed-size-action@946a292cd35bd1088e0d7eb92b69d1a8d5b5d76a'

@@ -46,10 +46,14 @@ jobs:
       npm-registry-url: '${{ steps.get-vars.outputs.npm-registry-url }}'
     steps:
       - id: 'get-vars'
+        env:
+          CLI_PACKAGE_NAME: '${{ vars.CLI_PACKAGE_NAME }}'
+          NPM_REGISTRY_SCOPE: '${{ vars.NPM_REGISTRY_SCOPE }}'
+          NPM_REGISTRY_URL: '${{ vars.NPM_REGISTRY_URL }}'
         run: |
-          echo 'cli-package-name=${{ vars.CLI_PACKAGE_NAME }}' >> "$GITHUB_OUTPUT"
-          echo 'npm-registry-scope=${{ vars.NPM_REGISTRY_SCOPE }}' >> "$GITHUB_OUTPUT"
-          echo 'npm-registry-url=${{ vars.NPM_REGISTRY_URL }}' >> "$GITHUB_OUTPUT"
+          echo "cli-package-name=${CLI_PACKAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "npm-registry-scope=${NPM_REGISTRY_SCOPE}" >> "$GITHUB_OUTPUT"
+          echo "npm-registry-url=${NPM_REGISTRY_URL}" >> "$GITHUB_OUTPUT"
 
   build-and-publish:
     name: 'Build and Publish CI Bundle'

@@ -21,11 +21,11 @@ jobs:
   e2e_linux:
     name: 'E2E Test (Linux) - ${{ matrix.sandbox }}'
     if: |
-      (github.event_name == 'push' ||
+      github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.repo.full_name == github.repository) ||
-      (github.event.label.name == 'maintainer:e2e:ok'))
+      github.event.pull_request.head.repo.full_name == github.repository ||
+      github.event.label.name == 'maintainer:e2e:ok'
     runs-on: 'gemini-cli-ubuntu-16-core'
     strategy:
       fail-fast: false
@@ -65,7 +65,10 @@ jobs:
         run: 'docker pull ${{ inputs.image-uri }}'
 
       - name: 'Install dependencies'
-        run: 'npm install ${{ inputs.cli-package-name }}@${{ inputs.version }}'
+        env:
+          CLI_PACKAGE_NAME: '${{ inputs.cli-package-name }}'
+          VERSION: '${{ inputs.version }}'
+        run: 'npm install ${{ env.CLI_PACKAGE_NAME }}@${{ env.VERSION }}'
 
       - name: 'Run E2E tests'
         env:
@@ -85,11 +88,11 @@ jobs:
   e2e_mac:
     name: 'E2E Test (macOS)'
     if: |
-      (github.event_name == 'push' ||
+      github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.repo.full_name == github.repository) ||
-      (github.event.label.name == 'maintainer:e2e:ok'))
+      github.event.pull_request.head.repo.full_name == github.repository ||
+      github.event.label.name == 'maintainer:e2e:ok'
     runs-on: 'macos-latest'
     steps:
       - name: 'Checkout (fork)'
@@ -116,7 +119,10 @@ jobs:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
 
       - name: 'Install dependencies'
-        run: 'npm install @google-gemini/gemini-cli@${{ inputs.version }}'
+        env:
+          CLI_PACKAGE_NAME: '${{ inputs.cli-package-name }}'
+          VERSION: '${{ inputs.version }}'
+        run: 'npm install ${{ env.CLI_PACKAGE_NAME }}@${{ env.VERSION }}'
 
       - name: 'Fix rollup optional dependencies on macOS'
         if: "runner.os == 'macOS'"
@@ -135,11 +141,11 @@ jobs:
   e2e_windows:
     name: 'Slow E2E - Win'
     if: |
-      (github.event_name == 'push' ||
+      github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.head.repo.full_name == github.repository) ||
-      (github.event.label.name == 'maintainer:e2e:ok'))
+      github.event.pull_request.head.repo.full_name == github.repository ||
+      github.event.label.name == 'maintainer:e2e:ok'
     runs-on: 'gemini-cli-windows-16-core'
     continue-on-error: true
 
@@ -187,7 +193,10 @@ jobs:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
 
       - name: 'Install dependencies'
-        run: 'npm install ${{ inputs.cli-package-name }}@${{ inputs.version }}'
+        env:
+          CLI_PACKAGE_NAME: '${{ inputs.cli-package-name }}'
+          VERSION: '${{ inputs.version }}'
+        run: 'npm install ${{ env.CLI_PACKAGE_NAME }}@${{ env.VERSION }}'
         shell: 'pwsh'
 
       - name: 'Run E2E tests'
@@ -210,8 +219,8 @@ jobs:
         github.event_name == 'push' ||
         github.event_name == 'merge_group' ||
         github.event_name == 'workflow_dispatch' ||
-        (github.event.pull_request.head.repo.full_name == github.repository) ||
-        (github.event.label.name == 'maintainer:e2e:ok')
+        github.event.pull_request.head.repo.full_name == github.repository ||
+        github.event.label.name == 'maintainer:e2e:ok'
       )
     needs:
       - 'e2e_linux'
