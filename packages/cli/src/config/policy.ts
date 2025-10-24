@@ -45,6 +45,8 @@ const PolicyRuleSchema = z.object({
   toolName: z.union([z.string(), z.array(z.string())]).optional(),
   mcpName: z.string().optional(),
   argsPattern: z.string().optional(),
+  commandPrefix: z.union([z.string(), z.array(z.string())]).optional(),
+  commandRegex: z.string().optional(),
   decision: z.nativeEnum(PolicyDecision),
   priority: z.number(),
   modes: z.array(z.string()).optional(),
@@ -53,6 +55,14 @@ const PolicyRuleSchema = z.object({
 const PolicyFileSchema = z.object({
   rule: z.array(PolicyRuleSchema),
 });
+
+/**
+ * Escapes special regex characters in a string for use in a regex pattern.
+ * This is used for commandPrefix to ensure literal string matching.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function getPolicyTier(dir: string): number {
   const DEFAULT_POLICIES_DIR = path.resolve(__dirname, 'policies');
@@ -121,6 +131,43 @@ async function loadPoliciesFromConfig(
           );
           continue;
         }
+        // Validate and preprocess rules
+        for (const rule of validationResult.data.rule) {
+          // Validate shell command convenience syntax
+          const hasCommandPrefix = rule.commandPrefix !== undefined;
+          const hasCommandRegex = rule.commandRegex !== undefined;
+          const hasArgsPattern = rule.argsPattern !== undefined;
+
+          if (hasCommandPrefix || hasCommandRegex) {
+            // Must have exactly toolName = "run_shell_command"
+            if (
+              rule.toolName !== 'run_shell_command' ||
+              Array.isArray(rule.toolName)
+            ) {
+              console.error(
+                `Invalid rule in ${file}: commandPrefix and commandRegex can only be used with toolName = "run_shell_command"`,
+              );
+              continue;
+            }
+
+            // Can't combine with argsPattern
+            if (hasArgsPattern) {
+              console.error(
+                `Invalid rule in ${file}: cannot use both commandPrefix/commandRegex and argsPattern`,
+              );
+              continue;
+            }
+
+            // Can't use both commandPrefix and commandRegex
+            if (hasCommandPrefix && hasCommandRegex) {
+              console.error(
+                `Invalid rule in ${file}: cannot use both commandPrefix and commandRegex`,
+              );
+              continue;
+            }
+          }
+        }
+
         // Convert argsPattern strings to RegExp objects and filter by mode
         const parsedRules: PolicyRule[] = validationResult.data.rule
           .filter((rule) => {
@@ -132,37 +179,63 @@ async function loadPoliciesFromConfig(
             return rule.modes.includes(approvalMode);
           })
           .flatMap((rule) => {
-            // Normalize toolName to array for uniform processing
-            const toolNames: Array<string | undefined> = rule.toolName
-              ? Array.isArray(rule.toolName)
-                ? rule.toolName
-                : [rule.toolName]
-              : [undefined];
+            // Transform commandPrefix/commandRegex to argsPattern
+            let effectiveArgsPattern = rule.argsPattern;
+            const commandPrefixes: string[] = [];
 
-            // Create a policy rule for each tool name
-            return toolNames.map((toolName) => {
-              // Transform mcpName field to composite toolName format
-              let effectiveToolName: string | undefined;
-              if (rule.mcpName && toolName) {
-                // Both mcpName and toolName: create composite format
-                effectiveToolName = `${rule.mcpName}__${toolName}`;
-              } else if (rule.mcpName) {
-                // Only mcpName: create server wildcard
-                effectiveToolName = `${rule.mcpName}__*`;
-              } else {
-                // Only toolName or neither: use as-is
-                effectiveToolName = toolName;
-              }
+            if (rule.commandPrefix) {
+              // Expand commandPrefix array
+              const prefixes = Array.isArray(rule.commandPrefix)
+                ? rule.commandPrefix
+                : [rule.commandPrefix];
+              commandPrefixes.push(...prefixes);
+            } else if (rule.commandRegex) {
+              // Single regex pattern
+              effectiveArgsPattern = `"command":"${rule.commandRegex}`;
+            }
 
-              const policyRule: PolicyRule = {
-                toolName: effectiveToolName,
-                decision: rule.decision,
-                priority: transformPriority(rule.priority, tier),
-              };
-              if (rule.argsPattern) {
-                policyRule.argsPattern = new RegExp(rule.argsPattern);
-              }
-              return policyRule;
+            // If we have command prefixes, expand to multiple patterns
+            const argsPatterns: Array<string | undefined> =
+              commandPrefixes.length > 0
+                ? commandPrefixes.map(
+                    (prefix) => `"command":"${escapeRegex(prefix)}`,
+                  )
+                : [effectiveArgsPattern];
+
+            // For each argsPattern, expand toolName arrays
+            return argsPatterns.flatMap((argsPattern) => {
+              // Normalize toolName to array for uniform processing
+              const toolNames: Array<string | undefined> = rule.toolName
+                ? Array.isArray(rule.toolName)
+                  ? rule.toolName
+                  : [rule.toolName]
+                : [undefined];
+
+              // Create a policy rule for each tool name
+              return toolNames.map((toolName) => {
+                // Transform mcpName field to composite toolName format
+                let effectiveToolName: string | undefined;
+                if (rule.mcpName && toolName) {
+                  // Both mcpName and toolName: create composite format
+                  effectiveToolName = `${rule.mcpName}__${toolName}`;
+                } else if (rule.mcpName) {
+                  // Only mcpName: create server wildcard
+                  effectiveToolName = `${rule.mcpName}__*`;
+                } else {
+                  // Only toolName or neither: use as-is
+                  effectiveToolName = toolName;
+                }
+
+                const policyRule: PolicyRule = {
+                  toolName: effectiveToolName,
+                  decision: rule.decision,
+                  priority: transformPriority(rule.priority, tier),
+                };
+                if (argsPattern) {
+                  policyRule.argsPattern = new RegExp(argsPattern);
+                }
+                return policyRule;
+              });
             });
           });
         rules = rules.concat(parsedRules);

@@ -1206,4 +1206,348 @@ priority = 150
 
     vi.doUnmock('node:fs/promises');
   });
+
+  it('should support commandPrefix syntax for shell commands', async () => {
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+          return [
+            {
+              name: 'shell.toml',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (
+          typeof path === 'string' &&
+          path.includes('.gemini/policies/shell.toml')
+        ) {
+          return `
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git status"
+decision = "allow"
+priority = 100
+`;
+        }
+        return actualFs.readFile(path, options);
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
+      readFile: mockReadFile,
+      readdir: mockReaddir,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    const rule = config.rules?.find(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.ALLOW,
+    );
+    expect(rule).toBeDefined();
+    expect(rule?.priority).toBeCloseTo(2.1, 5);
+    expect(rule?.argsPattern).toBeInstanceOf(RegExp);
+    // Should match commands starting with "git status"
+    expect(rule?.argsPattern?.test('{"command":"git status"}')).toBe(true);
+    expect(rule?.argsPattern?.test('{"command":"git status --short"}')).toBe(
+      true,
+    );
+    // Should not match other commands
+    expect(rule?.argsPattern?.test('{"command":"git branch"}')).toBe(false);
+
+    vi.doUnmock('node:fs/promises');
+  });
+
+  it('should support array syntax for commandPrefix', async () => {
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+          return [
+            {
+              name: 'shell.toml',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (
+          typeof path === 'string' &&
+          path.includes('.gemini/policies/shell.toml')
+        ) {
+          return `
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = ["git status", "git branch", "git log"]
+decision = "allow"
+priority = 100
+`;
+        }
+        return actualFs.readFile(path, options);
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
+      readFile: mockReadFile,
+      readdir: mockReaddir,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    const rules = config.rules?.filter(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.ALLOW,
+    );
+
+    // Should create 3 rules (one for each prefix)
+    expect(rules?.length).toBe(3);
+
+    // All rules should have the same priority and decision
+    rules?.forEach((rule) => {
+      expect(rule.priority).toBeCloseTo(2.1, 5);
+      expect(rule.decision).toBe(PolicyDecision.ALLOW);
+    });
+
+    // Test that each prefix pattern works
+    const patterns = rules?.map((r) => r.argsPattern);
+    expect(patterns?.some((p) => p?.test('{"command":"git status"}'))).toBe(
+      true,
+    );
+    expect(patterns?.some((p) => p?.test('{"command":"git branch"}'))).toBe(
+      true,
+    );
+    expect(patterns?.some((p) => p?.test('{"command":"git log"}'))).toBe(true);
+    // Should not match other commands
+    expect(patterns?.some((p) => p?.test('{"command":"git commit"}'))).toBe(
+      false,
+    );
+
+    vi.doUnmock('node:fs/promises');
+  });
+
+  it('should support commandRegex syntax for shell commands', async () => {
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+          return [
+            {
+              name: 'shell.toml',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (
+          typeof path === 'string' &&
+          path.includes('.gemini/policies/shell.toml')
+        ) {
+          return `
+[[rule]]
+toolName = "run_shell_command"
+commandRegex = "git (status|branch|log).*"
+decision = "allow"
+priority = 100
+`;
+        }
+        return actualFs.readFile(path, options);
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
+      readFile: mockReadFile,
+      readdir: mockReaddir,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    const rule = config.rules?.find(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.ALLOW,
+    );
+    expect(rule).toBeDefined();
+    expect(rule?.priority).toBeCloseTo(2.1, 5);
+    expect(rule?.argsPattern).toBeInstanceOf(RegExp);
+
+    // Should match commands matching the regex
+    expect(rule?.argsPattern?.test('{"command":"git status"}')).toBe(true);
+    expect(rule?.argsPattern?.test('{"command":"git status --short"}')).toBe(
+      true,
+    );
+    expect(rule?.argsPattern?.test('{"command":"git branch"}')).toBe(true);
+    expect(rule?.argsPattern?.test('{"command":"git log --all"}')).toBe(true);
+    // Should not match commands not in the regex
+    expect(rule?.argsPattern?.test('{"command":"git commit"}')).toBe(false);
+    expect(rule?.argsPattern?.test('{"command":"git push"}')).toBe(false);
+
+    vi.doUnmock('node:fs/promises');
+  });
+
+  it('should escape regex special characters in commandPrefix', async () => {
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+          return [
+            {
+              name: 'shell.toml',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (
+          typeof path === 'string' &&
+          path.includes('.gemini/policies/shell.toml')
+        ) {
+          return `
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "git log *.txt"
+decision = "allow"
+priority = 100
+`;
+        }
+        return actualFs.readFile(path, options);
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
+      readFile: mockReadFile,
+      readdir: mockReaddir,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    const rule = config.rules?.find(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.ALLOW,
+    );
+    expect(rule).toBeDefined();
+    // Should match the literal string "git log *.txt" (asterisk is escaped)
+    expect(rule?.argsPattern?.test('{"command":"git log *.txt"}')).toBe(true);
+    // Should not match "git log a.txt" because * is escaped to literal asterisk
+    expect(rule?.argsPattern?.test('{"command":"git log a.txt"}')).toBe(false);
+
+    vi.doUnmock('node:fs/promises');
+  });
 });
