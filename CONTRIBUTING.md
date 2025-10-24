@@ -1,6 +1,16 @@
 # How to Contribute
 
-We would love to accept your patches and contributions to this project.
+We would love to accept your patches and contributions to this project. This
+document includes:
+
+- **[Before you begin](#before-you-begin):** Essential steps to take before
+  becoming a Gemini CLI contributor.
+- **[Code contribution process](#code-contribution-process):** How to contribute
+  code to Gemini CLI.
+- **[Documentation contribution process](#documentation-contribution-process):**
+  How to contribute documentation to Gemini CLI.
+
+We're looking forward to seeing your contributions!
 
 ## Before you begin
 
@@ -23,15 +33,15 @@ sign a new one.
 This project follows
 [Google's Open Source Community Guidelines](https://opensource.google/conduct/).
 
-## Contribution Process
+## Code contribution process
 
-### Code Reviews
+### Code reviews
 
 All submissions, including submissions by project members, require review. We
 use [GitHub pull requests](https://docs.github.com/articles/about-pull-requests)
 for this purpose.
 
-### Self Assigning Issues
+### Self assigning issues
 
 If you're looking for an issue to work on, check out our list of issues that are
 labeled
@@ -44,12 +54,12 @@ assign the issue to you, provided it is not already assigned.
 Please note that you can have a maximum of 3 issues assigned to you at any given
 time.
 
-### Pull Request Guidelines
+### Pull request guidelines
 
 To help us review and merge your PRs quickly, please follow these guidelines.
 PRs that do not meet these standards may be closed.
 
-#### 1. Link to an Existing Issue
+#### 1. Link to an existing issue
 
 All PRs should be linked to an existing issue in our tracker. This ensures that
 every change has been discussed and is aligned with the project's goals before
@@ -62,7 +72,7 @@ any code is written.
 If an issue for your change doesn't exist, please **open one first** and wait
 for feedback before you start coding.
 
-#### 2. Keep It Small and Focused
+#### 2. Keep it small and focused
 
 We favor small, atomic PRs that address a single issue or add a single,
 self-contained feature.
@@ -74,32 +84,35 @@ self-contained feature.
 Large changes should be broken down into a series of smaller, logical PRs that
 can be reviewed and merged independently.
 
-#### 3. Use Draft PRs for Work in Progress
+#### 3. Use draft PRs for work in progress
 
 If you'd like to get early feedback on your work, please use GitHub's **Draft
 Pull Request** feature. This signals to the maintainers that the PR is not yet
 ready for a formal review but is open for discussion and initial feedback.
 
-#### 4. Ensure All Checks Pass
+#### 4. Ensure all checks pass
 
 Before submitting your PR, ensure that all automated checks are passing by
 running `npm run preflight`. This command runs all tests, linting, and other
 style checks.
 
-#### 5. Update Documentation
+#### 5. Update documentation
 
 If your PR introduces a user-facing change (e.g., a new command, a modified
 flag, or a change in behavior), you must also update the relevant documentation
 in the `/docs` directory.
 
-#### 6. Write Clear Commit Messages and a Good PR Description
+See more about writing documentation:
+[Documentation contribution process](#documentation-contribution-process).
+
+#### 6. Write clear commit messages and a good PR description
 
 Your PR should have a clear, descriptive title and a detailed description of the
 changes. Follow the [Conventional Commits](https://www.conventionalcommits.org/)
 standard for your commit messages.
 
-- **Good PR Title:** `feat(cli): Add --json flag to 'config get' command`
-- **Bad PR Title:** `Made some changes`
+- **Good PR title:** `feat(cli): Add --json flag to 'config get' command`
+- **Bad PR title:** `Made some changes`
 
 In the PR description, explain the "why" behind your changes and link to the
 relevant issue (e.g., `Fixes #123`).
@@ -118,12 +131,12 @@ Additionally you will need to click on the `Actions` tab and enable workflows
 for your repository, you'll find it's the large blue button in the center of the
 screen.
 
-## Development Setup and Workflow
+## Development setup and workflow
 
 This section guides contributors on how to build, modify, and understand the
 development setup of this project.
 
-### Setting Up the Development Environment
+### Setting up the development environment
 
 **Prerequisites:**
 
@@ -135,7 +148,7 @@ development setup of this project.
       version of Node.js `>=20` is acceptable.
 2.  **Git**
 
-### Build Process
+### Build process
 
 To clone the repository:
 
@@ -160,7 +173,7 @@ This command typically compiles TypeScript to JavaScript, bundles assets, and
 prepares the packages for execution. Refer to `scripts/build.js` and
 `package.json` scripts for more details on what happens during the build.
 
-### Enabling Sandboxing
+### Enabling sandboxing
 
 [Sandboxing](#sandboxing) is highly recommended and requires, at a minimum,
 setting `GEMINI_SANDBOX=true` in your `~/.env` and ensuring a sandboxing
@@ -190,11 +203,11 @@ utilize `npm link path/to/gemini-cli/packages/cli` (see:
 [docs](https://docs.npmjs.com/cli/v9/commands/npm-link)) or
 `alias gemini="node path/to/gemini-cli/packages/cli"` to run with `gemini`
 
-### Running Tests
+### Running tests
 
 This project contains two types of tests: unit tests and integration tests.
 
-#### Unit Tests
+#### Unit tests
 
 To execute the unit test suite for the project:
 
@@ -206,7 +219,7 @@ This will run tests located in the `packages/core` and `packages/cli`
 directories. Ensure tests pass before submitting any changes. For a more
 comprehensive check, it is recommended to run `npm run preflight`.
 
-#### Integration Tests
+#### Integration tests
 
 The integration tests are designed to validate the end-to-end functionality of
 the Gemini CLI. They are not run as part of the default `npm run test` command.
@@ -220,7 +233,7 @@ npm run test:e2e
 For more detailed information on the integration testing framework, please see
 the [Integration Tests documentation](./docs/integration-tests.md).
 
-### Linting and Preflight Checks
+### Linting and preflight checks
 
 To ensure code quality and formatting consistency, run the preflight check:
 
@@ -246,7 +259,7 @@ fi
 " > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 ```
 
-#### Formatting
+#### formatting
 
 To separately format the code in this project by running the following command
 from the root directory:
@@ -258,7 +271,7 @@ npm run format
 This command uses Prettier to format the code according to the project's style
 guidelines.
 
-#### Linting
+#### linting
 
 To separately lint the code in this project, run the following command from the
 root directory:
@@ -267,7 +280,7 @@ root directory:
 npm run lint
 ```
 
-### Coding Conventions
+### Coding conventions
 
 - Please adhere to the coding style, patterns, and conventions used throughout
   the existing codebase.
@@ -279,7 +292,7 @@ npm run lint
 - **Imports:** Pay special attention to import paths. The project uses ESLint to
   enforce restrictions on relative imports between packages.
 
-### Project Structure
+### Project structure
 
 - `packages/`: Contains the individual sub-packages of the project.
   - `cli/`: The command-line interface.
@@ -390,7 +403,7 @@ for your projects by creating the files `.gemini/sandbox.Dockerfile` and/or
 running `gemini` with `BUILD_SANDBOX=1` to trigger building of your custom
 sandbox.
 
-#### Proxied Networking
+#### Proxied networking
 
 All sandboxing methods, including macOS Seatbelt using `*-proxied` profiles,
 support restricting outbound network traffic through a custom proxy server that
@@ -401,7 +414,7 @@ connections to `example.com:443` (e.g. `curl https://example.com`) and declines
 all other requests. The proxy is started and stopped automatically alongside the
 sandbox.
 
-## Manual Publish
+## Manual publish
 
 We publish an artifact for each commit to our internal registry. But if you need
 to manually cut a local build, then run the following commands:
@@ -413,3 +426,91 @@ npm run auth
 npm run prerelease:dev
 npm publish --workspaces
 ```
+
+## Documentation contribution process
+
+Our documentation must be kept up-to-date with our code contributions. We want
+our documentation to be clear, concise, and helpful to our users. We value:
+
+- **Clarity:** Use simple and direct language. Avoid jargon where possible.
+- **Accuracy:** Ensure all information is correct and up-to-date.
+- **Completeness:** Cover all aspects of a feature or topic.
+- **Examples:** Provide practical examples to help users understand how to use
+  Gemini CLI.
+
+### Getting started
+
+The process for contributing to the documentation is similar to contributing
+code.
+
+1. **Fork the repository** and create a new branch.
+2. **Make your changes** in the `/docs` directory.
+3. **Preview your changes locally** in Markdown rendering.
+4. **Lint and format your changes.** Our preflight check includes linting and
+   formatting for documentation files.
+   ```bash
+   npm run preflight
+   ```
+5. **Open a pull request** with your changes.
+
+### Documentation structure
+
+Our documentation is organized using [sidebar.json](../sidebar.json) as the
+table of contents. When adding new documentation:
+
+1. Create your markdown file **in the appropriate directory** under `/docs`.
+2. Add an entry to `sidebar.json` in the relevant section.
+3. Ensure all internal links use relative paths and point to existing files.
+
+### Style guide
+
+We follow the
+[Google Developer Documentation Style Guide](https://developers.google.com/style).
+Please refer to it for guidance on writing style, tone, and formatting.
+
+#### Key style points
+
+- Use sentence case for headings.
+- Write in second person ("you") when addressing the reader.
+- Use present tense.
+- Keep paragraphs short and focused.
+- Use code blocks with appropriate language tags for syntax highlighting.
+- Include practical examples whenever possible.
+
+### Linting and formatting
+
+We use `prettier` to enforce a consistent style across our documentation. The
+`npm run preflight` command will check for any linting issues.
+
+You can also run the linter and formatter separately:
+
+- `npm run lint` - Check for linting issues
+- `npm run format` - Auto-format markdown files
+- `npm run lint:fix` - Auto-fix linting issues where possible
+
+Please make sure your contributions are free of linting errors before submitting
+a pull request.
+
+### Before you submit
+
+Before submitting your documentation pull request, please:
+
+1. Run `npm run preflight` to ensure all checks pass.
+2. Review your changes for clarity and accuracy.
+3. Check that all links work correctly.
+4. Ensure any code examples are tested and functional.
+5. Sign the
+   [Contributor License Agreement (CLA)](https://cla.developers.google.com/) if
+   you haven't already.
+
+### Need help?
+
+If you have questions about contributing documentation:
+
+- Check our [FAQ](../faq.md).
+- Review existing documentation for examples.
+- Open [an issue](https://github.com/google-gemini/gemini-cli/issues) to discuss
+  your proposed changes.
+- Reach out to the maintainers.
+
+We appreciate your contributions to making Gemini CLI documentation better!
