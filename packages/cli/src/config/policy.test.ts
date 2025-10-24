@@ -1085,4 +1085,125 @@ priority = 500
     delete process.env['GEMINI_CLI_SYSTEM_SETTINGS_PATH'];
     vi.doUnmock('node:fs/promises');
   });
+
+  it('should support array syntax for toolName in TOML policies', async () => {
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+          return [
+            {
+              name: 'array-test.toml',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (
+          typeof path === 'string' &&
+          path.includes('.gemini/policies/array-test.toml')
+        ) {
+          return `
+# Test array syntax for toolName
+[[rule]]
+toolName = ["tool1", "tool2", "tool3"]
+decision = "allow"
+priority = 100
+
+# Test array syntax with mcpName
+[[rule]]
+mcpName = "google-workspace"
+toolName = ["calendar.findFreeTime", "calendar.getEvent", "calendar.list"]
+decision = "allow"
+priority = 150
+`;
+        }
+        return actualFs.readFile(
+          path,
+          options as Parameters<typeof actualFs.readFile>[1],
+        );
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
+      readFile: mockReadFile,
+      readdir: mockReaddir,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    // Should create separate rules for each tool in the array
+    const tool1Rule = config.rules?.find((r) => r.toolName === 'tool1');
+    const tool2Rule = config.rules?.find((r) => r.toolName === 'tool2');
+    const tool3Rule = config.rules?.find((r) => r.toolName === 'tool3');
+
+    expect(tool1Rule).toBeDefined();
+    expect(tool2Rule).toBeDefined();
+    expect(tool3Rule).toBeDefined();
+
+    // All should have the same decision and priority
+    expect(tool1Rule?.decision).toBe(PolicyDecision.ALLOW);
+    expect(tool2Rule?.decision).toBe(PolicyDecision.ALLOW);
+    expect(tool3Rule?.decision).toBe(PolicyDecision.ALLOW);
+
+    // Priority 100 in user tier → 2.100
+    expect(tool1Rule?.priority).toBeCloseTo(2.1, 5);
+    expect(tool2Rule?.priority).toBeCloseTo(2.1, 5);
+    expect(tool3Rule?.priority).toBeCloseTo(2.1, 5);
+
+    // MCP tools should have composite names
+    const calendarFreeTime = config.rules?.find(
+      (r) => r.toolName === 'google-workspace__calendar.findFreeTime',
+    );
+    const calendarGetEvent = config.rules?.find(
+      (r) => r.toolName === 'google-workspace__calendar.getEvent',
+    );
+    const calendarList = config.rules?.find(
+      (r) => r.toolName === 'google-workspace__calendar.list',
+    );
+
+    expect(calendarFreeTime).toBeDefined();
+    expect(calendarGetEvent).toBeDefined();
+    expect(calendarList).toBeDefined();
+
+    // All should have the same decision and priority
+    expect(calendarFreeTime?.decision).toBe(PolicyDecision.ALLOW);
+    expect(calendarGetEvent?.decision).toBe(PolicyDecision.ALLOW);
+    expect(calendarList?.decision).toBe(PolicyDecision.ALLOW);
+
+    // Priority 150 in user tier → 2.150
+    expect(calendarFreeTime?.priority).toBeCloseTo(2.15, 5);
+    expect(calendarGetEvent?.priority).toBeCloseTo(2.15, 5);
+    expect(calendarList?.priority).toBeCloseTo(2.15, 5);
+
+    vi.doUnmock('node:fs/promises');
+  });
 });

@@ -42,7 +42,7 @@ function getPolicyDirectories(): string[] {
 }
 
 const PolicyRuleSchema = z.object({
-  toolName: z.string().optional(),
+  toolName: z.union([z.string(), z.array(z.string())]).optional(),
   mcpName: z.string().optional(),
   argsPattern: z.string().optional(),
   decision: z.nativeEnum(PolicyDecision),
@@ -131,29 +131,39 @@ async function loadPoliciesFromConfig(
             // Otherwise, check if current approval mode is in the rule's modes list
             return rule.modes.includes(approvalMode);
           })
-          .map((rule) => {
-            // Transform mcpName field to composite toolName format
-            let effectiveToolName: string | undefined;
-            if (rule.mcpName && rule.toolName) {
-              // Both mcpName and toolName: create composite format
-              effectiveToolName = `${rule.mcpName}__${rule.toolName}`;
-            } else if (rule.mcpName) {
-              // Only mcpName: create server wildcard
-              effectiveToolName = `${rule.mcpName}__*`;
-            } else {
-              // Only toolName or neither: use as-is
-              effectiveToolName = rule.toolName;
-            }
+          .flatMap((rule) => {
+            // Normalize toolName to array for uniform processing
+            const toolNames: Array<string | undefined> = rule.toolName
+              ? Array.isArray(rule.toolName)
+                ? rule.toolName
+                : [rule.toolName]
+              : [undefined];
 
-            const policyRule: PolicyRule = {
-              toolName: effectiveToolName,
-              decision: rule.decision,
-              priority: transformPriority(rule.priority, tier),
-            };
-            if (rule.argsPattern) {
-              policyRule.argsPattern = new RegExp(rule.argsPattern);
-            }
-            return policyRule;
+            // Create a policy rule for each tool name
+            return toolNames.map((toolName) => {
+              // Transform mcpName field to composite toolName format
+              let effectiveToolName: string | undefined;
+              if (rule.mcpName && toolName) {
+                // Both mcpName and toolName: create composite format
+                effectiveToolName = `${rule.mcpName}__${toolName}`;
+              } else if (rule.mcpName) {
+                // Only mcpName: create server wildcard
+                effectiveToolName = `${rule.mcpName}__*`;
+              } else {
+                // Only toolName or neither: use as-is
+                effectiveToolName = toolName;
+              }
+
+              const policyRule: PolicyRule = {
+                toolName: effectiveToolName,
+                decision: rule.decision,
+                priority: transformPriority(rule.priority, tier),
+              };
+              if (rule.argsPattern) {
+                policyRule.argsPattern = new RegExp(rule.argsPattern);
+              }
+              return policyRule;
+            });
           });
         rules = rules.concat(parsedRules);
       } catch (e) {
