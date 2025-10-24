@@ -205,13 +205,16 @@ export class ExtensionManager {
           this.requestConsent,
           previousExtensionConfig,
         );
-
+        const extensionId = getExtensionId(newExtensionConfig, installMetadata);
         const destinationPath = new ExtensionStorage(
           newExtensionName,
         ).getExtensionDir();
         let previousSettings: Record<string, string> | undefined;
         if (isUpdate) {
-          previousSettings = await getEnvContents(previousExtensionConfig);
+          previousSettings = await getEnvContents(
+            previousExtensionConfig,
+            extensionId,
+          );
           await this.uninstallExtension(newExtensionName, isUpdate);
         }
 
@@ -220,6 +223,7 @@ export class ExtensionManager {
           if (isUpdate) {
             await maybePromptForSettings(
               newExtensionConfig,
+              extensionId,
               this.requestSetting,
               previousExtensionConfig,
               previousSettings,
@@ -227,6 +231,7 @@ export class ExtensionManager {
           } else {
             await maybePromptForSettings(
               newExtensionConfig,
+              extensionId,
               this.requestSetting,
             );
           }
@@ -398,7 +403,10 @@ export class ExtensionManager {
     try {
       let config = this.loadExtensionConfig(effectiveExtensionPath);
 
-      const customEnv = await getEnvContents(config);
+      const customEnv = await getEnvContents(
+        config,
+        getExtensionId(config, installMetadata),
+      );
       config = resolveEnvVarsInObject(config, customEnv);
 
       if (config.mcpServers) {

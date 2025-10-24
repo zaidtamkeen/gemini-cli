@@ -23,13 +23,14 @@ export interface ExtensionSetting {
 
 export async function maybePromptForSettings(
   extensionConfig: ExtensionConfig,
+  extensionId: string,
   requestSetting: (setting: ExtensionSetting) => Promise<string>,
   previousExtensionConfig?: ExtensionConfig,
   previousSettings?: Record<string, string>,
 ): Promise<void> {
   const { name: extensionName, settings } = extensionConfig;
   const envFilePath = new ExtensionStorage(extensionName).getEnvFilePath();
-  const keychain = new KeychainTokenStorage(extensionName);
+  const keychain = new KeychainTokenStorage(extensionId);
 
   if (!settings || settings.length === 0) {
     // No settings for this extension. Clear any existing .env file.
@@ -112,9 +113,10 @@ export async function promptForSetting(
 
 export async function getEnvContents(
   extensionConfig: ExtensionConfig,
+  extensionId: string,
 ): Promise<Record<string, string>> {
   const extensionStorage = new ExtensionStorage(extensionConfig.name);
-  const keychain = new KeychainTokenStorage(extensionConfig.name);
+  const keychain = new KeychainTokenStorage(extensionId);
   let customEnv: Record<string, string> = {};
   if (fsSync.existsSync(extensionStorage.getEnvFilePath())) {
     const envFile = fsSync.readFileSync(
