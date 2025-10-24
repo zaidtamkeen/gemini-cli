@@ -5,19 +5,12 @@ document includes:
 
 - **[Before you begin](#before-you-begin):** Essential steps to take before
   becoming a Gemini CLI contributor.
-- **Code contributions:**
-  - **[Code contribution process](#code-contribution-process):** Contribute code
-    to Gemini CLI.
-  - **[Forking](#forking):** Fork the repository and set up integration testing.
-  - **[Development setup and workflow](#development-setup-and-workflow):** Set
-    up a development environment.
-  - **[Debugging](#debugging):** Debug in VS Code and React DevTools.
-  - **[Sandboxing](#sandboxing):** Sandbox with macOS Seatbelt or
-    container-based sandboxing.
-  - **[Manual publish](#manual-publish):** Manually cut a local build.
-- **Documentation contributions:**
-  - **[Documentation contribution process](#documentation-contribution-process):**
-    Contribute documentation to Gemini CLI.
+- **[Code contribution process](#code-contribution-process):** How to contribute
+  code to Gemini CLI.
+- **[Development workflow](#development-workflow):** How to set up your
+  development environment and workflow.
+- **[Documentation contribution process](#documentation-contribution-process):**
+  How to contribute documentation to Gemini CLI.
 
 We're looking forward to seeing your contributions!
 
@@ -155,7 +148,7 @@ screen.
 This section guides contributors on how to build, modify, and understand the
 development setup of this project.
 
-#### Setting up the development environment
+### Setting up the development environment
 
 **Prerequisites:**
 
@@ -167,7 +160,7 @@ development setup of this project.
       version of Node.js `>=20` is acceptable.
 2.  **Git**
 
-#### Build process
+### Build process
 
 To clone the repository:
 
@@ -192,7 +185,7 @@ This command typically compiles TypeScript to JavaScript, bundles assets, and
 prepares the packages for execution. Refer to `scripts/build.js` and
 `package.json` scripts for more details on what happens during the build.
 
-#### Enabling sandboxing
+### Enabling sandboxing
 
 [Sandboxing](#sandboxing) is highly recommended and requires, at a minimum,
 setting `GEMINI_SANDBOX=true` in your `~/.env` and ensuring a sandboxing
@@ -208,7 +201,7 @@ npm run build:all
 
 To skip building the sandbox container, you can use `npm run build` instead.
 
-### Running
+### Running the CLI
 
 To start the Gemini CLI from the source code (after building), run the following
 command from the root directory:
@@ -321,9 +314,9 @@ npm run lint
 
 For more detailed architecture, see `docs/architecture.md`.
 
-## Debugging
+### Debugging
 
-### VS Code:
+#### VS Code
 
 0.  Run the CLI to interactively debug in VS Code with `F5`
 1.  Start the CLI in debug mode from the root directory:
@@ -474,7 +467,7 @@ code.
 
 ### Documentation structure
 
-Our documentation is organized using [sidebar.json](../sidebar.json) as the
+Our documentation is organized using [sidebar.json](docs/sidebar.json) as the
 table of contents. When adding new documentation:
 
 1. Create your markdown file **in the appropriate directory** under `/docs`.
@@ -526,7 +519,7 @@ Before submitting your documentation pull request, please:
 
 If you have questions about contributing documentation:
 
-- Check our [FAQ](../faq.md).
+- Check our [FAQ](docs/faq.md).
 - Review existing documentation for examples.
 - Open [an issue](https://github.com/google-gemini/gemini-cli/issues) to discuss
   your proposed changes.
