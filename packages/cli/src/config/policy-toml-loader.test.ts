@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ApprovalMode, PolicyDecision } from '@google/gemini-cli-core';
 import type { Dirent } from 'node:fs';
+import nodePath from 'node:path';
 
 describe('policy-toml-loader', () => {
   beforeEach(() => {
@@ -30,7 +31,7 @@ describe('policy-toml-loader', () => {
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'test.toml',
@@ -44,7 +45,10 @@ describe('policy-toml-loader', () => {
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/test.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'test.toml'))
+        ) {
           return `
 [[rule]]
 toolName = "glob"
@@ -93,7 +97,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'shell.toml',
@@ -107,7 +111,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/shell.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'shell.toml'))
+        ) {
           return `
 [[rule]]
 toolName = "run_shell_command"
@@ -160,7 +167,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'shell.toml',
@@ -174,7 +181,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/shell.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'shell.toml'))
+        ) {
           return `
 [[rule]]
 toolName = "run_shell_command"
@@ -228,7 +238,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'tools.toml',
@@ -242,7 +252,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/tools.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'tools.toml'))
+        ) {
           return `
 [[rule]]
 toolName = ["glob", "grep", "read"]
@@ -291,7 +304,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'mcp.toml',
@@ -305,7 +318,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/mcp.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'mcp.toml'))
+        ) {
           return `
 [[rule]]
 mcpName = "google-workspace"
@@ -352,7 +368,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'modes.toml',
@@ -366,7 +382,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/modes.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'modes.toml'))
+        ) {
           return `
 [[rule]]
 toolName = "glob"
@@ -419,7 +438,7 @@ modes = ["yolo"]
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'invalid.toml',
@@ -433,7 +452,10 @@ modes = ["yolo"]
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/invalid.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'invalid.toml'))
+        ) {
           return `
 [[rule]
 toolName = "glob"
@@ -479,7 +501,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'invalid.toml',
@@ -493,7 +515,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/invalid.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'invalid.toml'))
+        ) {
           return `
 [[rule]]
 toolName = "glob"
@@ -538,7 +563,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'invalid.toml',
@@ -552,7 +577,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/invalid.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'invalid.toml'))
+        ) {
           return `
 [[rule]]
 toolName = "glob"
@@ -598,7 +626,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'invalid.toml',
@@ -612,7 +640,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/invalid.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'invalid.toml'))
+        ) {
           return `
 [[rule]]
 toolName = "run_shell_command"
@@ -659,7 +690,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'invalid.toml',
@@ -673,7 +704,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/invalid.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'invalid.toml'))
+        ) {
           return `
 [[rule]]
 toolName = "run_shell_command"
@@ -720,7 +754,7 @@ priority = 100
           path: string,
           _options?: { withFileTypes: boolean },
         ): Promise<Dirent[]> => {
-          if (path === '/policies') {
+          if (nodePath.normalize(path) === nodePath.normalize('/policies')) {
             return [
               {
                 name: 'shell.toml',
@@ -734,7 +768,10 @@ priority = 100
       );
 
       const mockReadFile = vi.fn(async (path: string): Promise<string> => {
-        if (path === '/policies/shell.toml') {
+        if (
+          nodePath.normalize(path) ===
+          nodePath.normalize(nodePath.join('/policies', 'shell.toml'))
+        ) {
           return `
 [[rule]]
 toolName = "run_shell_command"

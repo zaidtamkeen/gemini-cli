@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import nodePath from 'node:path';
 
 import type { Settings } from './settings.js';
 import {
@@ -29,7 +30,12 @@ describe('createPolicyEngineConfig', () => {
         path: string | Buffer | URL,
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
-        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+        if (
+          typeof path === 'string' &&
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies'))
+        ) {
           // Return empty array for user policies
           return [] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
         }
@@ -622,7 +628,12 @@ describe('createPolicyEngineConfig', () => {
         path: string | Buffer | URL,
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
-        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+        if (
+          typeof path === 'string' &&
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies'))
+        ) {
           return [
             {
               name: 'write.toml',
@@ -645,7 +656,9 @@ describe('createPolicyEngineConfig', () => {
       ) => {
         if (
           typeof path === 'string' &&
-          path.includes('.gemini/policies/write.toml')
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies/write.toml'))
         ) {
           return `
 [[rule]]
@@ -704,7 +717,12 @@ priority = 150
         path: string | Buffer | URL,
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
-        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+        if (
+          typeof path === 'string' &&
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies'))
+        ) {
           return [
             {
               name: 'write.toml',
@@ -727,7 +745,9 @@ priority = 150
       ) => {
         if (
           typeof path === 'string' &&
-          path.includes('.gemini/policies/write.toml')
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies/write.toml'))
         ) {
           return `
 [[rule]]
@@ -782,7 +802,11 @@ priority = 150
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
         if (typeof path === 'string') {
-          if (path.includes('/tmp/admin/policies')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(nodePath.normalize('/tmp/admin/policies'))
+          ) {
             return [
               {
                 name: 'write.toml',
@@ -791,7 +815,11 @@ priority = 150
               },
             ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
           }
-          if (path.includes('.gemini/policies')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(nodePath.normalize('.gemini/policies'))
+          ) {
             return [
               {
                 name: 'write.toml',
@@ -815,7 +843,9 @@ priority = 150
       ) => {
         if (
           typeof path === 'string' &&
-          (path.includes('/tmp/admin/policies/write.toml') ||
+          (nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('/tmp/admin/policies/write.toml')) ||
             path.endsWith('tmp/admin/policies/write.toml'))
         ) {
           return `
@@ -827,7 +857,9 @@ priority = 200
         }
         if (
           typeof path === 'string' &&
-          path.includes('.gemini/policies/write.toml')
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies/write.toml'))
         ) {
           return `
 [[rule]]
@@ -893,7 +925,11 @@ priority = 150
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
         if (typeof path === 'string') {
-          if (path.includes('/tmp/admin/policies')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(nodePath.normalize('/tmp/admin/policies'))
+          ) {
             return [
               {
                 name: 'admin-policy.toml',
@@ -902,7 +938,11 @@ priority = 150
               },
             ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
           }
-          if (path.includes('.gemini/policies')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(nodePath.normalize('.gemini/policies'))
+          ) {
             return [
               {
                 name: 'user-policy.toml',
@@ -926,7 +966,13 @@ priority = 150
       ) => {
         if (typeof path === 'string') {
           // Admin policy with low priority (100)
-          if (path.includes('/tmp/admin/policies/admin-policy.toml')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(
+                nodePath.normalize('/tmp/admin/policies/admin-policy.toml'),
+              )
+          ) {
             return `
 [[rule]]
 toolName = "run_shell_command"
@@ -935,7 +981,11 @@ priority = 100
 `;
           }
           // User policy with high priority (900)
-          if (path.includes('.gemini/policies/user-policy.toml')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(nodePath.normalize('.gemini/policies/user-policy.toml'))
+          ) {
             return `
 [[rule]]
 toolName = "run_shell_command"
@@ -1004,7 +1054,11 @@ priority = 900
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
         if (typeof path === 'string') {
-          if (path.includes('/tmp/admin/policies')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(nodePath.normalize('/tmp/admin/policies'))
+          ) {
             return [
               {
                 name: 'admin.toml',
@@ -1013,7 +1067,11 @@ priority = 900
               },
             ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
           }
-          if (path.includes('.gemini/policies')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(nodePath.normalize('.gemini/policies'))
+          ) {
             return [
               {
                 name: 'user.toml',
@@ -1036,7 +1094,11 @@ priority = 900
         options: Parameters<typeof actualFs.readFile>[1],
       ) => {
         if (typeof path === 'string') {
-          if (path.includes('/tmp/admin/policies/admin.toml')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(nodePath.normalize('/tmp/admin/policies/admin.toml'))
+          ) {
             return `
 [[rule]]
 toolName = "admin-tool"
@@ -1044,7 +1106,11 @@ decision = "allow"
 priority = 500
 `;
           }
-          if (path.includes('.gemini/policies/user.toml')) {
+          if (
+            nodePath
+              .normalize(path)
+              .includes(nodePath.normalize('.gemini/policies/user.toml'))
+          ) {
             return `
 [[rule]]
 toolName = "user-tool"
@@ -1099,7 +1165,12 @@ priority = 500
         path: string | Buffer | URL,
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
-        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+        if (
+          typeof path === 'string' &&
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies'))
+        ) {
           return [
             {
               name: 'array-test.toml',
@@ -1122,7 +1193,9 @@ priority = 500
       ) => {
         if (
           typeof path === 'string' &&
-          path.includes('.gemini/policies/array-test.toml')
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies/array-test.toml'))
         ) {
           return `
 # Test array syntax for toolName
@@ -1220,7 +1293,12 @@ priority = 150
         path: string | Buffer | URL,
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
-        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+        if (
+          typeof path === 'string' &&
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies'))
+        ) {
           return [
             {
               name: 'shell.toml',
@@ -1243,7 +1321,9 @@ priority = 150
       ) => {
         if (
           typeof path === 'string' &&
-          path.includes('.gemini/policies/shell.toml')
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies/shell.toml'))
         ) {
           return `
 [[rule]]
@@ -1303,7 +1383,12 @@ priority = 100
         path: string | Buffer | URL,
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
-        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+        if (
+          typeof path === 'string' &&
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies'))
+        ) {
           return [
             {
               name: 'shell.toml',
@@ -1326,7 +1411,9 @@ priority = 100
       ) => {
         if (
           typeof path === 'string' &&
-          path.includes('.gemini/policies/shell.toml')
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies/shell.toml'))
         ) {
           return `
 [[rule]]
@@ -1399,7 +1486,12 @@ priority = 100
         path: string | Buffer | URL,
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
-        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+        if (
+          typeof path === 'string' &&
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies'))
+        ) {
           return [
             {
               name: 'shell.toml',
@@ -1422,7 +1514,9 @@ priority = 100
       ) => {
         if (
           typeof path === 'string' &&
-          path.includes('.gemini/policies/shell.toml')
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies/shell.toml'))
         ) {
           return `
 [[rule]]
@@ -1486,7 +1580,12 @@ priority = 100
         path: string | Buffer | URL,
         options?: Parameters<typeof actualFs.readdir>[1],
       ) => {
-        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+        if (
+          typeof path === 'string' &&
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies'))
+        ) {
           return [
             {
               name: 'shell.toml',
@@ -1509,7 +1608,9 @@ priority = 100
       ) => {
         if (
           typeof path === 'string' &&
-          path.includes('.gemini/policies/shell.toml')
+          nodePath
+            .normalize(path)
+            .includes(nodePath.normalize('.gemini/policies/shell.toml'))
         ) {
           return `
 [[rule]]
