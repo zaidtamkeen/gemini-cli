@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { escapePath, unescapePath, isSubpath } from './paths.js';
+import { escapePath, unescapePath, isSubpath, shortenPath } from './paths.js';
 
 describe('escapePath', () => {
   it('should escape spaces', () => {
@@ -312,5 +312,127 @@ describe('isSubpath on Windows', () => {
   it('should handle relative paths correctly on Windows', () => {
     expect(isSubpath('Users\\Test', 'Users\\Test\\file.txt')).toBe(true);
     expect(isSubpath('Users\\Test\\file.txt', 'Users\\Test')).toBe(false);
+  });
+});
+
+describe('shortenPath', () => {
+  describe.skipIf(process.platform === 'win32')('on POSIX', () => {
+    it('should not shorten a path that is shorter than maxLen', () => {
+      const p = '/path/to/file.txt';
+      expect(shortenPath(p, 40)).toBe(p);
+    });
+
+    it('should not shorten a path that is equal to maxLen', () => {
+      const p = '/path/to/file.txt';
+      expect(shortenPath(p, p.length)).toBe(p);
+    });
+
+    it('should shorten a long path, keeping start and end from a short limit', () => {
+      const p = '/path/to/a/very/long/directory/name/file.txt';
+      expect(shortenPath(p, 25)).toBe('/path/.../name/file.txt');
+    });
+
+    it('should shorten a long path, keeping more from the end from a longer limit', () => {
+      const p = '/path/to/a/very/long/directory/name/file.txt';
+      expect(shortenPath(p, 35)).toBe('/path/.../directory/name/file.txt');
+    });
+
+    it('should handle deep paths where few segments from the end fit', () => {
+      const p = '/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z/file.txt';
+      expect(shortenPath(p, 20)).toBe('/a/.../y/z/file.txt');
+    });
+
+    it('should handle deep paths where many segments from the end fit', () => {
+      const p = '/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z/file.txt';
+      expect(shortenPath(p, 45)).toBe(
+        '/a/.../l/m/n/o/p/q/r/s/t/u/v/w/x/y/z/file.txt',
+      );
+    });
+
+    it('should handle a long filename in the root when it needs shortening', () => {
+      const p = '/a-very-long-filename-that-needs-to-be-shortened.txt';
+      expect(shortenPath(p, 40)).toBe(
+        '/a-very-long-filen...o-be-shortened.txt',
+      );
+    });
+
+    it('should handle root path', () => {
+      const p = '/';
+      expect(shortenPath(p, 10)).toBe('/');
+    });
+
+    it('should handle a path with one long segment after root', () => {
+      const p = '/a-very-long-directory-name';
+      expect(shortenPath(p, 20)).toBe('/a-very-...ory-name');
+    });
+
+    it('should handle a path with just a long filename (no root)', () => {
+      const p = 'a-very-long-filename-that-needs-to-be-shortened.txt';
+      expect(shortenPath(p, 40)).toBe(
+        'a-very-long-filena...o-be-shortened.txt',
+      );
+    });
+  });
+
+  describe.skipIf(process.platform !== 'win32')('on Windows', () => {
+    it('should not shorten a path that is shorter than maxLen', () => {
+      const p = 'C:\\Users\\Test\\file.txt';
+      expect(shortenPath(p, 40)).toBe(p);
+    });
+
+    it('should not shorten a path that is equal to maxLen', () => {
+      const p = 'C:\\path\\to\\file.txt';
+      expect(shortenPath(p, p.length)).toBe(p);
+    });
+
+    it('should shorten a long path, keeping start and end from a short limit', () => {
+      const p = 'C:\\path\\to\\a\\very\\long\\directory\\name\\file.txt';
+      expect(shortenPath(p, 30)).toBe('C:\\path\\...\\name\\file.txt');
+    });
+
+    it('should shorten a long path, keeping more from the end from a longer limit', () => {
+      const p = 'C:\\path\\to\\a\\very\\long\\directory\\name\\file.txt';
+      expect(shortenPath(p, 42)).toBe(
+        'C:\\path\\...\\long\\directory\\name\\file.txt',
+      );
+    });
+
+    it('should handle deep paths where few segments from the end fit', () => {
+      const p =
+        'C:\\a\\b\\c\\d\\e\\f\\g\\h\\i\\j\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt';
+      expect(shortenPath(p, 22)).toBe('C:\\a\\...\\y\\z\\file.txt');
+    });
+
+    it('should handle deep paths where many segments from the end fit', () => {
+      const p =
+        'C:\\a\\b\\c\\d\\e\\f\\g\\h\\i\\j\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt';
+      expect(shortenPath(p, 47)).toBe(
+        'C:\\a\\...\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt',
+      );
+    });
+
+    it('should handle a long filename in the root when it needs shortening', () => {
+      const p = 'C:\\a-very-long-filename-that-needs-to-be-shortened.txt';
+      expect(shortenPath(p, 40)).toBe(
+        'C:\\a-very-long-fil...o-be-shortened.txt',
+      );
+    });
+
+    it('should handle root path', () => {
+      const p = 'C:\\';
+      expect(shortenPath(p, 10)).toBe('C:\\');
+    });
+
+    it('should handle a path with one long segment after root', () => {
+      const p = 'C:\\a-very-long-directory-name';
+      expect(shortenPath(p, 22)).toBe('C:\\a-very...tory-name');
+    });
+
+    it('should handle a path with just a long filename (no root)', () => {
+      const p = 'a-very-long-filename-that-needs-to-be-shortened.txt';
+      expect(shortenPath(p, 40)).toBe(
+        'a-very-long-filena...o-be-shortened.txt',
+      );
+    });
   });
 });
