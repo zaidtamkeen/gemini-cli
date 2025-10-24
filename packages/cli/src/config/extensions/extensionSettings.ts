@@ -33,37 +33,30 @@ export async function maybePromptForSettings(
   const keychain = new KeychainTokenStorage(extensionId);
 
   if (!settings || settings.length === 0) {
-    // No settings for this extension. Clear any existing .env file.
-    if (fsSync.existsSync(envFilePath)) {
-      await fs.writeFile(envFilePath, '');
-    }
-    // and keychain entries
-    if (previousExtensionConfig?.settings) {
-      for (const setting of previousExtensionConfig.settings) {
-        if (setting.sensitive) {
-          // Errors are ok, the secret might not be there.
-          await keychain.deleteSecret(setting.envVar).catch(() => {});
-        }
-      }
-    }
+    await clearSettings(envFilePath, keychain);
     return;
   }
 
-  let settingsToPrompt = settings;
-  if (previousExtensionConfig) {
-    const oldSettings = new Set(
-      previousExtensionConfig.settings?.map((s) => s.name) || [],
-    );
-    settingsToPrompt = settingsToPrompt.filter((s) => !oldSettings.has(s.name));
-  }
+  const settingsChanges = getSettingsChanges(
+    settings,
+    previousExtensionConfig?.settings ?? [],
+  );
 
   const allSettings: Record<string, string> = { ...(previousSettings ?? {}) };
 
-  if (settingsToPrompt && settingsToPrompt.length > 0) {
-    for (const setting of settingsToPrompt) {
-      const answer = await requestSetting(setting);
-      allSettings[setting.envVar] = answer;
-    }
+  for (const removedEnvSetting of settingsChanges.removeEnv) {
+    delete allSettings[removedEnvSetting.envVar];
+  }
+
+  for (const removedSensitiveSetting of settingsChanges.removeSensitive) {
+    await keychain.deleteSecret(removedSensitiveSetting.envVar);
+  }
+
+  for (const setting of settingsChanges.promptForSensitive.concat(
+    settingsChanges.promptForEnv,
+  )) {
+    const answer = await requestSetting(setting);
+    allSettings[setting.envVar] = answer;
   }
 
   const nonSensitiveSettings: Record<string, string> = {};
@@ -76,19 +69,6 @@ export async function maybePromptForSettings(
       await keychain.setSecret(setting.envVar, value);
     } else {
       nonSensitiveSettings[setting.envVar] = value;
-    }
-  }
-
-  if (previousExtensionConfig?.settings) {
-    for (const oldSetting of previousExtensionConfig.settings) {
-      const newSetting = settings.find((s) => s.name === oldSetting.name);
-      if (!newSetting && oldSetting.sensitive) {
-        // Setting was removed and was sensitive
-        await keychain.deleteSecret(oldSetting.envVar).catch(() => {});
-      } else if (newSetting && oldSetting.sensitive && !newSetting.sensitive) {
-        // Setting is no longer sensitive
-        await keychain.deleteSecret(oldSetting.envVar).catch(() => {});
-      }
     }
   }
 
@@ -137,4 +117,51 @@ export async function getEnvContents(
     }
   }
   return customEnv;
+}
+
+interface settingsChanges {
+  promptForSensitive: ExtensionSetting[];
+  removeSensitive: ExtensionSetting[];
+  promptForEnv: ExtensionSetting[];
+  removeEnv: ExtensionSetting[];
+}
+function getSettingsChanges(
+  settings: ExtensionSetting[],
+  oldSettings: ExtensionSetting[],
+): settingsChanges {
+  const isSameSetting = (a: ExtensionSetting, b: ExtensionSetting) =>
+    a.envVar === b.envVar && (a.sensitive ?? false) === (b.sensitive ?? false);
+
+  const sensitiveOld = oldSettings.filter((s) => s.sensitive ?? false);
+  const sensitiveNew = settings.filter((s) => s.sensitive ?? false);
+  const envOld = oldSettings.filter((s) => !(s.sensitive ?? false));
+  const envNew = settings.filter((s) => !(s.sensitive ?? false));
+
+  return {
+    promptForSensitive: sensitiveNew.filter(
+      (s) => !sensitiveOld.some((old) => isSameSetting(s, old)),
+    ),
+    removeSensitive: sensitiveOld.filter(
+      (s) => !sensitiveNew.some((neu) => isSameSetting(s, neu)),
+    ),
+    promptForEnv: envNew.filter(
+      (s) => !envOld.some((old) => isSameSetting(s, old)),
+    ),
+    removeEnv: envOld.filter(
+      (s) => !envNew.some((neu) => isSameSetting(s, neu)),
+    ),
+  };
+}
+
+async function clearSettings(
+  envFilePath: string,
+  keychain: KeychainTokenStorage,
+) {
+  if (fsSync.existsSync(envFilePath)) {
+    await fs.writeFile(envFilePath, '');
+  }
+  for (const secret of await keychain.listSecrets()) {
+    await keychain.deleteSecret(secret);
+  }
+  return;
 }

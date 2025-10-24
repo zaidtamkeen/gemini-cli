@@ -59,7 +59,13 @@ describe('extensionSettings', () => {
 
     it('should do nothing if settings are undefined', async () => {
       const config: ExtensionConfig = { name: 'test-ext', version: '1.0.0' };
-      await maybePromptForSettings(config, '12345', mockRequestSetting);
+      await maybePromptForSettings(
+        config,
+        '12345',
+        mockRequestSetting,
+        undefined,
+        undefined,
+      );
       expect(mockRequestSetting).not.toHaveBeenCalled();
     });
 
@@ -69,11 +75,17 @@ describe('extensionSettings', () => {
         version: '1.0.0',
         settings: [],
       };
-      await maybePromptForSettings(config, '12345', mockRequestSetting);
+      await maybePromptForSettings(
+        config,
+        '12345',
+        mockRequestSetting,
+        undefined,
+        undefined,
+      );
       expect(mockRequestSetting).not.toHaveBeenCalled();
     });
 
-    it('should call requestSetting for each setting', async () => {
+    it('should prompt for all settings if there is no previous config', async () => {
       const config: ExtensionConfig = {
         name: 'test-ext',
         version: '1.0.0',
@@ -82,14 +94,25 @@ describe('extensionSettings', () => {
           { name: 's2', description: 'd2', envVar: 'VAR2' },
         ],
       };
-      await maybePromptForSettings(config, '12345', mockRequestSetting);
+      await maybePromptForSettings(
+        config,
+        '12345',
+        mockRequestSetting,
+        undefined,
+        undefined,
+      );
       expect(mockRequestSetting).toHaveBeenCalledTimes(2);
       expect(mockRequestSetting).toHaveBeenCalledWith(config.settings![0]);
       expect(mockRequestSetting).toHaveBeenCalledWith(config.settings![1]);
     });
 
-    it('should write the .env file with the correct content', async () => {
-      const config: ExtensionConfig = {
+    it('should only prompt for new settings', async () => {
+      const previousConfig: ExtensionConfig = {
+        name: 'test-ext',
+        version: '1.0.0',
+        settings: [{ name: 's1', description: 'd1', envVar: 'VAR1' }],
+      };
+      const newConfig: ExtensionConfig = {
         name: 'test-ext',
         version: '1.0.0',
         settings: [
@@ -97,12 +120,128 @@ describe('extensionSettings', () => {
           { name: 's2', description: 'd2', envVar: 'VAR2' },
         ],
       };
-      await maybePromptForSettings(config, '12345', mockRequestSetting);
+      const previousSettings = { VAR1: 'previous-VAR1' };
+
+      await maybePromptForSettings(
+        newConfig,
+        '12345',
+        mockRequestSetting,
+        previousConfig,
+        previousSettings,
+      );
+
+      expect(mockRequestSetting).toHaveBeenCalledTimes(1);
+      expect(mockRequestSetting).toHaveBeenCalledWith(newConfig.settings![1]);
 
       const expectedEnvPath = path.join(extensionDir, '.env');
       const actualContent = await fsPromises.readFile(expectedEnvPath, 'utf-8');
-      const expectedContent = 'VAR1=mock-VAR1\nVAR2=mock-VAR2\n';
+      const expectedContent = 'VAR1=previous-VAR1\nVAR2=mock-VAR2\n';
+      expect(actualContent).toBe(expectedContent);
+    });
 
+    it('should remove settings that are no longer in the config', async () => {
+      const previousConfig: ExtensionConfig = {
+        name: 'test-ext',
+        version: '1.0.0',
+        settings: [
+          { name: 's1', description: 'd1', envVar: 'VAR1' },
+          { name: 's2', description: 'd2', envVar: 'VAR2' },
+        ],
+      };
+      const newConfig: ExtensionConfig = {
+        name: 'test-ext',
+        version: '1.0.0',
+        settings: [{ name: 's1', description: 'd1', envVar: 'VAR1' }],
+      };
+      const previousSettings = {
+        VAR1: 'previous-VAR1',
+        VAR2: 'previous-VAR2',
+      };
+
+      await maybePromptForSettings(
+        newConfig,
+        '12345',
+        mockRequestSetting,
+        previousConfig,
+        previousSettings,
+      );
+
+      expect(mockRequestSetting).not.toHaveBeenCalled();
+
+      const expectedEnvPath = path.join(extensionDir, '.env');
+      const actualContent = await fsPromises.readFile(expectedEnvPath, 'utf-8');
+      const expectedContent = 'VAR1=previous-VAR1\n';
+      expect(actualContent).toBe(expectedContent);
+    });
+
+    it('should reprompt if a setting changes sensitivity', async () => {
+      const previousConfig: ExtensionConfig = {
+        name: 'test-ext',
+        version: '1.0.0',
+        settings: [
+          { name: 's1', description: 'd1', envVar: 'VAR1', sensitive: false },
+        ],
+      };
+      const newConfig: ExtensionConfig = {
+        name: 'test-ext',
+        version: '1.0.0',
+        settings: [
+          { name: 's1', description: 'd1', envVar: 'VAR1', sensitive: true },
+        ],
+      };
+      const previousSettings = { VAR1: 'previous-VAR1' };
+
+      await maybePromptForSettings(
+        newConfig,
+        '12345',
+        mockRequestSetting,
+        previousConfig,
+        previousSettings,
+      );
+
+      expect(mockRequestSetting).toHaveBeenCalledTimes(1);
+      expect(mockRequestSetting).toHaveBeenCalledWith(newConfig.settings![0]);
+
+      // The value should now be in keychain, not the .env file.
+      const expectedEnvPath = path.join(extensionDir, '.env');
+      const actualContent = await fsPromises.readFile(expectedEnvPath, 'utf-8');
+      expect(actualContent).toBe('');
+    });
+
+    it('should not prompt if settings are identical', async () => {
+      const previousConfig: ExtensionConfig = {
+        name: 'test-ext',
+        version: '1.0.0',
+        settings: [
+          { name: 's1', description: 'd1', envVar: 'VAR1' },
+          { name: 's2', description: 'd2', envVar: 'VAR2' },
+        ],
+      };
+      const newConfig: ExtensionConfig = {
+        name: 'test-ext',
+        version: '1.0.0',
+        settings: [
+          { name: 's1', description: 'd1', envVar: 'VAR1' },
+          { name: 's2', description: 'd2', envVar: 'VAR2' },
+        ],
+      };
+      const previousSettings = {
+        VAR1: 'previous-VAR1',
+        VAR2: 'previous-VAR2',
+      };
+
+      await maybePromptForSettings(
+        newConfig,
+        '12345',
+        mockRequestSetting,
+        previousConfig,
+        previousSettings,
+      );
+
+      expect(mockRequestSetting).not.toHaveBeenCalled();
+      const expectedEnvPath = path.join(extensionDir, '.env');
+      const actualContent = await fsPromises.readFile(expectedEnvPath, 'utf-8');
+      const expectedContent = 'VAR1=previous-VAR1\nVAR2=previous-VAR2\n';
       expect(actualContent).toBe(expectedContent);
     });
   });
