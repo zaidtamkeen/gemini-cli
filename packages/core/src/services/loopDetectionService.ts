@@ -11,11 +11,13 @@ import { GeminiEventType } from '../core/turn.js';
 import {
   logLoopDetected,
   logLoopDetectionDisabled,
+  logLlmLoopCheck,
 } from '../telemetry/loggers.js';
 import {
   LoopDetectedEvent,
   LoopDetectionDisabledEvent,
   LoopType,
+  LlmLoopCheckEvent,
 } from '../telemetry/types.js';
 import type { Config } from '../config/config.js';
 import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/config.js';
@@ -481,14 +483,27 @@ export class LoopDetectionService {
     signal: AbortSignal,
   ): Promise<Record<string, unknown> | null> {
     try {
-      return await this.config.getBaseLlmClient().generateJson({
+      const result = (await this.config.getBaseLlmClient().generateJson({
         contents,
         schema,
         model,
         systemInstruction: LOOP_DETECTION_SYSTEM_PROMPT,
         abortSignal: signal,
         promptId: this.promptId,
-      });
+      })) as Record<string, unknown>;
+
+      logLlmLoopCheck(
+        this.config,
+        new LlmLoopCheckEvent(
+          model,
+          this.promptId,
+          true,
+          result['confidence'] as number | undefined,
+          result['reasoning'] as string | undefined,
+        ),
+      );
+
+      return result;
     } catch (e) {
       this.config.getDebugMode() ? debugLogger.warn(e) : debugLogger.debug(e);
       return null;

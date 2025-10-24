@@ -23,6 +23,7 @@ import { LoopDetectionService } from './loopDetectionService.js';
 vi.mock('../telemetry/loggers.js', () => ({
   logLoopDetected: vi.fn(),
   logLoopDetectionDisabled: vi.fn(),
+  logLlmLoopCheck: vi.fn(),
 }));
 
 const TOOL_CALL_LOOP_THRESHOLD = 5;

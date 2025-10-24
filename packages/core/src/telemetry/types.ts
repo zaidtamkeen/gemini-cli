@@ -1287,6 +1287,63 @@ export class ModelSlashCommandEvent implements BaseTelemetryEvent {
   }
 }
 
+export const EVENT_LLM_LOOP_CHECK = 'gemini_cli.llm_loop_check';
+export class LlmLoopCheckEvent implements BaseTelemetryEvent {
+  'event.name': 'llm_loop_check';
+  'event.timestamp': string;
+  model: string;
+  prompt_id: string;
+  success: boolean;
+  confidence?: number;
+  reasoning?: string;
+  error?: string;
+
+  constructor(
+    model: string,
+    prompt_id: string,
+    success: boolean,
+    confidence?: number,
+    reasoning?: string,
+    error?: string,
+  ) {
+    this['event.name'] = 'llm_loop_check';
+    this['event.timestamp'] = new Date().toISOString();
+    this.model = model;
+    this.prompt_id = prompt_id;
+    this.success = success;
+    this.confidence = confidence;
+    this.reasoning = reasoning;
+    this.error = error;
+  }
+
+  toOpenTelemetryAttributes(config: Config): LogAttributes {
+    const attributes: LogAttributes = {
+      ...getCommonAttributes(config),
+      'event.name': EVENT_LLM_LOOP_CHECK,
+      'event.timestamp': this['event.timestamp'],
+      model: this.model,
+      prompt_id: this.prompt_id,
+      success: this.success,
+    };
+
+    if (this.confidence !== undefined) {
+      attributes['confidence'] = this.confidence;
+    }
+    if (this.reasoning !== undefined) {
+      attributes['reasoning'] = this.reasoning;
+    }
+    if (this.error !== undefined) {
+      attributes['error'] = this.error;
+    }
+
+    return attributes;
+  }
+
+  toLogBody(): string {
+    return `LLM loop check. Model: ${this.model}. Success: ${this.success}. Confidence: ${this.confidence}`;
+  }
+}
+
 export type TelemetryEvent =
   | StartSessionEvent
   | EndSessionEvent
@@ -1316,7 +1373,8 @@ export type TelemetryEvent =
   | ModelSlashCommandEvent
   | AgentStartEvent
   | AgentFinishEvent
-  | WebFetchFallbackAttemptEvent;
+  | WebFetchFallbackAttemptEvent
+  | LlmLoopCheckEvent;
 
 export const EVENT_EXTENSION_DISABLE = 'gemini_cli.extension_disable';
 export class ExtensionDisableEvent implements BaseTelemetryEvent {
