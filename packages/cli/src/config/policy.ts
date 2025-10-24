@@ -18,9 +18,10 @@ import {
 import { type Settings, getSystemSettingsPath } from './settings.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import fs from 'node:fs/promises';
-import toml from '@iarna/toml';
-import { z } from 'zod';
+import {
+  loadPoliciesFromToml,
+  type PolicyFileError,
+} from './policy-toml-loader.js';
 
 // Get the directory name of the current module
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,29 +42,10 @@ function getPolicyDirectories(): string[] {
   ].reverse();
 }
 
-const PolicyRuleSchema = z.object({
-  toolName: z.union([z.string(), z.array(z.string())]).optional(),
-  mcpName: z.string().optional(),
-  argsPattern: z.string().optional(),
-  commandPrefix: z.union([z.string(), z.array(z.string())]).optional(),
-  commandRegex: z.string().optional(),
-  decision: z.nativeEnum(PolicyDecision),
-  priority: z.number(),
-  modes: z.array(z.string()).optional(),
-});
-
-const PolicyFileSchema = z.object({
-  rule: z.array(PolicyRuleSchema),
-});
-
 /**
- * Escapes special regex characters in a string for use in a regex pattern.
- * This is used for commandPrefix to ensure literal string matching.
+ * Determines the policy tier (1=default, 2=user, 3=admin) for a given directory.
+ * This is used by the TOML loader to assign priority bands.
  */
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 function getPolicyTier(dir: string): number {
   const DEFAULT_POLICIES_DIR = path.resolve(__dirname, 'policies');
   const USER_POLICIES_DIR = Storage.getUserPoliciesDir();
@@ -87,169 +69,20 @@ function getPolicyTier(dir: string): number {
   return 1;
 }
 
-function transformPriority(priority: number, tier: number): number {
-  return tier + priority / 1000;
-}
-
-async function loadPoliciesFromConfig(
-  approvalMode: ApprovalMode,
-  policyDirs: string[],
-): Promise<PolicyRule[]> {
-  let rules: PolicyRule[] = [];
-
-  for (const dir of policyDirs) {
-    const tier = getPolicyTier(dir);
-
-    // Scan directory for all .toml files
-    let filesToLoad: string[];
-    try {
-      const dirEntries = await fs.readdir(dir, { withFileTypes: true });
-      filesToLoad = dirEntries
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.toml'))
-        .map((entry) => entry.name);
-    } catch (e) {
-      const error = e as NodeJS.ErrnoException;
-      if (error.code === 'ENOENT') {
-        // Directory doesn't exist, skip it
-        continue;
-      }
-      console.error(`Error reading policy directory ${dir}:`, error);
-      continue;
-    }
-
-    for (const file of filesToLoad) {
-      const filePath = path.join(dir, file);
-      try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const parsed = toml.parse(fileContent);
-        const validationResult = PolicyFileSchema.safeParse(parsed);
-        if (!validationResult.success) {
-          // Ideally, we should have better error handling here
-          console.error(
-            `Failed to parse policy file ${file}:`,
-            validationResult.error,
-          );
-          continue;
-        }
-        // Validate and preprocess rules
-        for (const rule of validationResult.data.rule) {
-          // Validate shell command convenience syntax
-          const hasCommandPrefix = rule.commandPrefix !== undefined;
-          const hasCommandRegex = rule.commandRegex !== undefined;
-          const hasArgsPattern = rule.argsPattern !== undefined;
-
-          if (hasCommandPrefix || hasCommandRegex) {
-            // Must have exactly toolName = "run_shell_command"
-            if (
-              rule.toolName !== 'run_shell_command' ||
-              Array.isArray(rule.toolName)
-            ) {
-              console.error(
-                `Invalid rule in ${file}: commandPrefix and commandRegex can only be used with toolName = "run_shell_command"`,
-              );
-              continue;
-            }
-
-            // Can't combine with argsPattern
-            if (hasArgsPattern) {
-              console.error(
-                `Invalid rule in ${file}: cannot use both commandPrefix/commandRegex and argsPattern`,
-              );
-              continue;
-            }
-
-            // Can't use both commandPrefix and commandRegex
-            if (hasCommandPrefix && hasCommandRegex) {
-              console.error(
-                `Invalid rule in ${file}: cannot use both commandPrefix and commandRegex`,
-              );
-              continue;
-            }
-          }
-        }
-
-        // Convert argsPattern strings to RegExp objects and filter by mode
-        const parsedRules: PolicyRule[] = validationResult.data.rule
-          .filter((rule) => {
-            // If rule has no modes field, it applies to all modes
-            if (!rule.modes || rule.modes.length === 0) {
-              return true;
-            }
-            // Otherwise, check if current approval mode is in the rule's modes list
-            return rule.modes.includes(approvalMode);
-          })
-          .flatMap((rule) => {
-            // Transform commandPrefix/commandRegex to argsPattern
-            let effectiveArgsPattern = rule.argsPattern;
-            const commandPrefixes: string[] = [];
-
-            if (rule.commandPrefix) {
-              // Expand commandPrefix array
-              const prefixes = Array.isArray(rule.commandPrefix)
-                ? rule.commandPrefix
-                : [rule.commandPrefix];
-              commandPrefixes.push(...prefixes);
-            } else if (rule.commandRegex) {
-              // Single regex pattern
-              effectiveArgsPattern = `"command":"${rule.commandRegex}`;
-            }
-
-            // If we have command prefixes, expand to multiple patterns
-            const argsPatterns: Array<string | undefined> =
-              commandPrefixes.length > 0
-                ? commandPrefixes.map(
-                    (prefix) => `"command":"${escapeRegex(prefix)}`,
-                  )
-                : [effectiveArgsPattern];
-
-            // For each argsPattern, expand toolName arrays
-            return argsPatterns.flatMap((argsPattern) => {
-              // Normalize toolName to array for uniform processing
-              const toolNames: Array<string | undefined> = rule.toolName
-                ? Array.isArray(rule.toolName)
-                  ? rule.toolName
-                  : [rule.toolName]
-                : [undefined];
-
-              // Create a policy rule for each tool name
-              return toolNames.map((toolName) => {
-                // Transform mcpName field to composite toolName format
-                let effectiveToolName: string | undefined;
-                if (rule.mcpName && toolName) {
-                  // Both mcpName and toolName: create composite format
-                  effectiveToolName = `${rule.mcpName}__${toolName}`;
-                } else if (rule.mcpName) {
-                  // Only mcpName: create server wildcard
-                  effectiveToolName = `${rule.mcpName}__*`;
-                } else {
-                  // Only toolName or neither: use as-is
-                  effectiveToolName = toolName;
-                }
-
-                const policyRule: PolicyRule = {
-                  toolName: effectiveToolName,
-                  decision: rule.decision,
-                  priority: transformPriority(rule.priority, tier),
-                };
-                if (argsPattern) {
-                  policyRule.argsPattern = new RegExp(argsPattern);
-                }
-                return policyRule;
-              });
-            });
-          });
-        rules = rules.concat(parsedRules);
-      } catch (e) {
-        const error = e as NodeJS.ErrnoException;
-        // Ignore if the file doesn't exist
-        if (error.code !== 'ENOENT') {
-          console.error(`Failed to read policy file ${filePath}:`, error);
-        }
-      }
-    }
+/**
+ * Formats a policy file error for console logging.
+ */
+function formatPolicyError(error: PolicyFileError): string {
+  const tierLabel = error.tier.toUpperCase();
+  let message = `[${tierLabel}] Policy file error in ${error.fileName}:\n`;
+  message += `  ${error.message}`;
+  if (error.details) {
+    message += `\n${error.details}`;
   }
-
-  return rules;
+  if (error.suggestion) {
+    message += `\n  Suggestion: ${error.suggestion}`;
+  }
+  return message;
 }
 
 export async function createPolicyEngineConfig(
@@ -258,10 +91,23 @@ export async function createPolicyEngineConfig(
 ): Promise<PolicyEngineConfig> {
   const policyDirs = getPolicyDirectories();
 
-  const rules: PolicyRule[] = await loadPoliciesFromConfig(
+  // Load policies from TOML files
+  const { rules: tomlRules, errors } = await loadPoliciesFromToml(
     approvalMode,
     policyDirs,
+    getPolicyTier,
   );
+
+  // Log any errors encountered during TOML loading
+  if (errors.length > 0) {
+    console.error('\nPolicy file errors:');
+    for (const error of errors) {
+      console.error(formatPolicyError(error));
+    }
+    console.error('');
+  }
+
+  const rules: PolicyRule[] = [...tomlRules];
 
   // Priority system for policy rules:
   // - Higher priority numbers win over lower priority numbers

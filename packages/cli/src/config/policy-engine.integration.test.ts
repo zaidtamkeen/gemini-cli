@@ -97,7 +97,7 @@ describe('Policy Engine Integration Tests', () => {
       );
     });
 
-    it('should correctly prioritize specific tool rules over MCP server wildcards', async () => {
+    it('should correctly prioritize MCP server wildcards over command line tool excludes', async () => {
       const settings: Settings = {
         mcp: {
           allowed: ['my-server'],
@@ -113,12 +113,12 @@ describe('Policy Engine Integration Tests', () => {
       );
       const engine = new PolicyEngine(config);
 
-      // Server is allowed, but specific tool is excluded
+      // MCP server allowed (priority 85) wins over command line tool exclude (priority 2.2)
       expect(engine.check({ name: 'my-server__safe-tool' })).toBe(
         PolicyDecision.ALLOW,
       );
       expect(engine.check({ name: 'my-server__dangerous-tool' })).toBe(
-        PolicyDecision.DENY,
+        PolicyDecision.ALLOW, // MCP server allow wins
       );
     });
 
@@ -261,7 +261,7 @@ describe('Policy Engine Integration Tests', () => {
 
       // Find rules and verify their priorities
       const blockedToolRule = rules.find((r) => r.toolName === 'blocked-tool');
-      expect(blockedToolRule?.priority).toBe(200);
+      expect(blockedToolRule?.priority).toBe(2.2);
 
       const blockedServerRule = rules.find(
         (r) => r.toolName === 'blocked-server__*',
@@ -271,7 +271,7 @@ describe('Policy Engine Integration Tests', () => {
       const specificToolRule = rules.find(
         (r) => r.toolName === 'specific-tool',
       );
-      expect(specificToolRule?.priority).toBe(100);
+      expect(specificToolRule?.priority).toBe(2.1);
 
       const trustedServerRule = rules.find(
         (r) => r.toolName === 'trusted-server__*',
@@ -412,13 +412,13 @@ describe('Policy Engine Integration Tests', () => {
 
       // Verify each rule has the expected priority
       const tool3Rule = rules.find((r) => r.toolName === 'tool3');
-      expect(tool3Rule?.priority).toBe(200); // Excluded tools
+      expect(tool3Rule?.priority).toBe(2.2); // Excluded tools (user tier)
 
       const server2Rule = rules.find((r) => r.toolName === 'server2__*');
       expect(server2Rule?.priority).toBe(195); // Excluded servers
 
       const tool1Rule = rules.find((r) => r.toolName === 'tool1');
-      expect(tool1Rule?.priority).toBe(100); // Allowed tools
+      expect(tool1Rule?.priority).toBe(2.1); // Allowed tools (user tier)
 
       const server1Rule = rules.find((r) => r.toolName === 'server1__*');
       expect(server1Rule?.priority).toBe(85); // Allowed servers
