@@ -80,7 +80,7 @@ class DiscoveredMCPToolInvocation extends BaseToolInvocation<
     super(params, messageBus, `${serverName}__${serverToolName}`, displayName);
   }
 
-  override async shouldConfirmExecute(
+  protected override async getConfirmationDetails(
     _abortSignal: AbortSignal,
   ): Promise<ToolCallConfirmationDetails | false> {
     const serverAllowListKey = this.serverName;
@@ -219,6 +219,7 @@ export class DiscoveredMCPTool extends BaseDeclarativeTool<
     nameOverride?: string,
     private readonly cliConfig?: Config,
     override readonly extensionId?: string,
+    messageBus?: MessageBus,
   ) {
     super(
       nameOverride ?? generateValidName(serverToolName),
@@ -227,8 +228,8 @@ export class DiscoveredMCPTool extends BaseDeclarativeTool<
       Kind.Other,
       parameterSchema,
       true, // isOutputMarkdown
-      false, // canUpdateOutput
-      undefined, // messageBus
+      false, // canUpdateOutput,
+      messageBus,
       extensionId,
     );
   }
@@ -244,6 +245,7 @@ export class DiscoveredMCPTool extends BaseDeclarativeTool<
       `${this.serverName}__${this.serverToolName}`,
       this.cliConfig,
       this.extensionId,
+      this.messageBus,
     );
   }
 
