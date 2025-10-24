@@ -154,7 +154,7 @@ describe('FakeContentGenerator', () => {
 
   describe('fromFile', () => {
     it('should create a generator from a file', async () => {
-      const fileContent = JSON.stringify([fakeGenerateContentResponse]);
+      const fileContent = JSON.stringify(fakeGenerateContentResponse) + '\n';
       mockReadFile.mockResolvedValue(fileContent);
 
       const generator = await FakeContentGenerator.fromFile('fake-path.json');
