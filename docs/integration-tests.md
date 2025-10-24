@@ -56,6 +56,18 @@ To run a single test by its name, use the `--test-name-pattern` flag:
 npm run test:e2e -- --test-name-pattern "reads a file"
 ```
 
+### Regenerating model responses
+
+Some integration tests use faked out model responses, which may need to be
+regenerated from time to time as the implementations change.
+
+To regenerate these golden files, set the REGENERATE_MODEL_GOLDENS environment
+variable to "true" when running the tests, for example:
+
+```bash
+REGENERATE_MODEL_GOLDENS="true" npm run test:e2e
+```
+
 ### Deflaking a test
 
 Before adding a **new** integration test, you should test it at least 5 times

@@ -47,7 +47,10 @@ export class FakeContentGenerator implements ContentGenerator {
 
   static async fromFile(filePath: string): Promise<FakeContentGenerator> {
     const fileContent = await promises.readFile(filePath, 'utf-8');
-    const responses = JSON.parse(fileContent) as FakeResponse[];
+    const responses = fileContent
+      .split('\n')
+      .filter((line) => line.trim() !== '')
+      .map((line) => JSON.parse(line) as FakeResponse);
     return new FakeContentGenerator(responses);
   }
 

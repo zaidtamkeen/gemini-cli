@@ -42,7 +42,10 @@ export class RecordingContentGenerator implements ContentGenerator {
     );
     const recordedResponse: FakeResponse = {
       method: 'generateContent',
-      response,
+      response: {
+        candidates: response.candidates,
+        usageMetadata: response.usageMetadata,
+      } as GenerateContentResponse,
     };
     appendFileSync(this.filePath, `${safeJsonStringify(recordedResponse)}\n`);
     return response;
