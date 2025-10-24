@@ -8,13 +8,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FakeContentGenerator } from './fakeContentGenerator.js';
 import { promises } from 'node:fs';
 import type { FakeResponses } from './fakeContentGenerator.js';
-import type {
+import {
   GenerateContentResponse,
-  CountTokensResponse,
-  EmbedContentResponse,
-  GenerateContentParameters,
-  CountTokensParameters,
-  EmbedContentParameters,
+  type CountTokensResponse,
+  type EmbedContentResponse,
+  type GenerateContentParameters,
+  type CountTokensParameters,
+  type EmbedContentParameters,
 } from '@google/genai';
 
 vi.mock('node:fs', async (importOriginal) => {
@@ -69,6 +69,7 @@ describe('FakeContentGenerator', () => {
       {} as GenerateContentParameters,
       'id',
     );
+    expect(response).instanceOf(GenerateContentResponse);
     expect(response).toEqual(fakeResponses.generateContent[0]);
   });
 
@@ -90,6 +91,7 @@ describe('FakeContentGenerator', () => {
     );
     const responses = [];
     for await (const response of stream) {
+      expect(response).instanceOf(GenerateContentResponse);
       responses.push(response);
     }
     expect(responses).toEqual(fakeResponses.generateContentStream[0]);
