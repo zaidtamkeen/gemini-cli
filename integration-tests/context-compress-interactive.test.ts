@@ -20,7 +20,7 @@ describe('Interactive Mode', () => {
   });
 
   it('should trigger chat compression with /compress command', async () => {
-    await rig.setup('interactive-compress-test', {
+    rig.setup('interactive-compress-test', {
       fakeResponsesPath: join(
         import.meta.dirname,
         'context-compress-interactive.compress.json',
@@ -49,7 +49,7 @@ describe('Interactive Mode', () => {
   });
 
   it('should handle compression failure on token inflation', async () => {
-    await rig.setup('interactive-compress-failure', {
+    rig.setup('interactive-compress-failure', {
       fakeResponsesPath: join(
         import.meta.dirname,
         'context-compress-interactive.compress-failure.json',
