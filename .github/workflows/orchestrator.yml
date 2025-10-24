@@ -67,7 +67,7 @@ jobs:
 
   e2e:
     name: 'E2E Checks'
-    needs: ['build-and-publish', 'ci', 'get-vars']
+    needs: ['build-and-publish', 'get-vars']
     uses: './.github/workflows/e2e.yml'
     with:
       version: '${{ needs.build-and-publish.outputs.version }}'
