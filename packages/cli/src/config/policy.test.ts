@@ -19,7 +19,36 @@ afterEach(() => {
 
 describe('createPolicyEngineConfig', () => {
   it('should return ASK_USER for write tools and ALLOW for read-only tools by default', async () => {
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+          // Return empty array for user policies
+          return [] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readdir: mockReaddir },
+      readdir: mockReaddir,
+    }));
+
+    vi.resetModules();
     const { createPolicyEngineConfig } = await import('./policy.js');
+
     const settings: Settings = {};
     const config = await createPolicyEngineConfig(
       settings,
@@ -30,63 +59,66 @@ describe('createPolicyEngineConfig', () => {
     config.rules?.sort((a, b) =>
       (a.toolName ?? '').localeCompare(b.toolName ?? ''),
     );
+    // Default policies are transformed to tier 1: 1 + priority/1000
     expect(config.rules).toEqual([
       {
         toolName: 'glob',
         decision: PolicyDecision.ALLOW,
-        priority: 50,
+        priority: 1.05, // 1 + 50/1000
       },
       {
         toolName: 'google_web_search',
         decision: PolicyDecision.ALLOW,
-        priority: 50,
+        priority: 1.05,
       },
       {
         toolName: 'list_directory',
         decision: PolicyDecision.ALLOW,
-        priority: 50,
+        priority: 1.05,
       },
       {
         toolName: 'read_file',
         decision: PolicyDecision.ALLOW,
-        priority: 50,
+        priority: 1.05,
       },
       {
         toolName: 'read_many_files',
         decision: PolicyDecision.ALLOW,
-        priority: 50,
+        priority: 1.05,
       },
       {
         toolName: 'replace',
         decision: PolicyDecision.ASK_USER,
-        priority: 10,
+        priority: 1.01, // 1 + 10/1000
       },
       {
         toolName: 'run_shell_command',
         decision: PolicyDecision.ASK_USER,
-        priority: 10,
+        priority: 1.01,
       },
       {
         toolName: 'save_memory',
         decision: PolicyDecision.ASK_USER,
-        priority: 10,
+        priority: 1.01,
       },
       {
         toolName: 'search_file_content',
         decision: PolicyDecision.ALLOW,
-        priority: 50,
+        priority: 1.05,
       },
       {
         toolName: 'web_fetch',
         decision: PolicyDecision.ASK_USER,
-        priority: 10,
+        priority: 1.01,
       },
       {
         toolName: 'write_file',
         decision: PolicyDecision.ASK_USER,
-        priority: 10,
+        priority: 1.01,
       },
     ]);
+
+    vi.doUnmock('node:fs/promises');
   });
 
   it('should allow tools in tools.allowed', async () => {
@@ -250,9 +282,11 @@ describe('createPolicyEngineConfig', () => {
     const settings: Settings = {};
     const config = await createPolicyEngineConfig(settings, ApprovalMode.YOLO);
     const rule = config.rules?.find(
-      (r) => r.decision === PolicyDecision.ALLOW && r.priority === 0,
+      (r) => r.decision === PolicyDecision.ALLOW && !r.toolName,
     );
     expect(rule).toBeDefined();
+    // Priority 999 in default tier → 1.999
+    expect(rule?.priority).toBeCloseTo(1.999, 5);
   });
 
   it('should allow edit tool in AUTO_EDIT mode', async () => {
@@ -266,7 +300,8 @@ describe('createPolicyEngineConfig', () => {
       (r) => r.toolName === 'replace' && r.decision === PolicyDecision.ALLOW,
     );
     expect(rule).toBeDefined();
-    expect(rule?.priority).toBe(15);
+    // Priority 15 in default tier → 1.015
+    expect(rule?.priority).toBeCloseTo(1.015, 5);
   });
 
   it('should prioritize exclude over allow', async () => {
@@ -390,8 +425,10 @@ describe('createPolicyEngineConfig', () => {
     );
     expect(globDenyRule).toBeDefined();
     expect(globAllowRule).toBeDefined();
+    // Deny from settings (not transformed)
     expect(globDenyRule!.priority).toBe(200);
-    expect(globAllowRule!.priority).toBe(50);
+    // Allow from default TOML: 1 + 50/1000 = 1.05
+    expect(globAllowRule!.priority).toBeCloseTo(1.05, 5);
 
     // Verify all priority levels are correct
     const priorities = config.rules
@@ -448,21 +485,22 @@ describe('createPolicyEngineConfig', () => {
     expect(explicitFalseRule).toBeUndefined();
   });
 
-  it('should not add write tool rules in YOLO mode', async () => {
+  it('should have YOLO allow-all rule beat write tool rules in YOLO mode', async () => {
     const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       tools: { exclude: ['dangerous-tool'] },
     };
     const config = await createPolicyEngineConfig(settings, ApprovalMode.YOLO);
 
-    // Should have the wildcard allow rule with priority 0
+    // Should have the wildcard allow rule
     const wildcardRule = config.rules?.find(
-      (r) =>
-        !r.toolName && r.decision === PolicyDecision.ALLOW && r.priority === 0,
+      (r) => !r.toolName && r.decision === PolicyDecision.ALLOW,
     );
     expect(wildcardRule).toBeDefined();
+    // Priority 999 in default tier → 1.999
+    expect(wildcardRule?.priority).toBeCloseTo(1.999, 5);
 
-    // Should NOT have any write tool rules (which would have priority 10)
+    // Write tool ASK_USER rules are present (no modes restriction now)
     const writeToolRules = config.rules?.filter(
       (r) =>
         [
@@ -473,9 +511,14 @@ describe('createPolicyEngineConfig', () => {
           WEB_FETCH_TOOL_NAME,
         ].includes(r.toolName || '') && r.decision === PolicyDecision.ASK_USER,
     );
-    expect(writeToolRules).toHaveLength(0);
+    expect(writeToolRules).toBeDefined();
 
-    // Should still have the exclude rule
+    // But YOLO allow-all rule has higher priority than all write tool rules
+    writeToolRules?.forEach((writeRule) => {
+      expect(wildcardRule!.priority).toBeGreaterThan(writeRule.priority!);
+    });
+
+    // Should still have the exclude rule (from settings, not TOML, so not transformed)
     const excludeRule = config.rules?.find(
       (r) =>
         r.toolName === 'dangerous-tool' && r.decision === PolicyDecision.DENY,
@@ -549,7 +592,8 @@ describe('createPolicyEngineConfig', () => {
       (r) => !r.toolName && r.decision === PolicyDecision.ALLOW,
     );
     expect(yoloWildcard).toBeDefined();
-    expect(yoloWildcard?.priority).toBe(0);
+    // Priority 999 in default tier → 1.999
+    expect(yoloWildcard?.priority).toBeCloseTo(1.999, 5);
 
     // Test AUTO_EDIT mode
     const autoEditConfig = await createPolicyEngineConfig(
@@ -561,7 +605,8 @@ describe('createPolicyEngineConfig', () => {
       (r) => r.toolName === 'replace' && r.decision === PolicyDecision.ALLOW,
     );
     expect(editRule).toBeDefined();
-    expect(editRule?.priority).toBe(15);
+    // Priority 15 in default tier → 1.015
+    expect(editRule?.priority).toBeCloseTo(1.015, 5);
   });
 
   it('should support argsPattern in policy rules', async () => {
@@ -569,6 +614,28 @@ describe('createPolicyEngineConfig', () => {
       await vi.importActual<typeof import('node:fs/promises')>(
         'node:fs/promises',
       );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+          return [
+            {
+              name: 'write.toml',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
     const mockReadFile = vi.fn(
       async (
         path: Parameters<typeof actualFs.readFile>[0],
@@ -592,8 +659,9 @@ priority = 150
 
     vi.doMock('node:fs/promises', () => ({
       ...actualFs,
-      default: { ...actualFs, readFile: mockReadFile },
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
       readFile: mockReadFile,
+      readdir: mockReaddir,
     }));
 
     vi.resetModules();
@@ -608,10 +676,11 @@ priority = 150
     const rule = config.rules?.find(
       (r) =>
         r.toolName === 'run_shell_command' &&
-        r.decision === PolicyDecision.ALLOW &&
-        r.priority === 150,
+        r.decision === PolicyDecision.ALLOW,
     );
     expect(rule).toBeDefined();
+    // Priority 150 in user tier → 2.150
+    expect(rule?.priority).toBeCloseTo(2.15, 5);
     expect(rule?.argsPattern).toBeInstanceOf(RegExp);
     expect(rule?.argsPattern?.test('{"command":"git status"}')).toBe(true);
     expect(rule?.argsPattern?.test('{"command":"git diff"}')).toBe(true);
@@ -627,6 +696,28 @@ priority = 150
       await vi.importActual<typeof import('node:fs/promises')>(
         'node:fs/promises',
       );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string' && path.includes('.gemini/policies')) {
+          return [
+            {
+              name: 'write.toml',
+              isFile: () => true,
+              isDirectory: () => false,
+            },
+          ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
     const mockReadFile = vi.fn(
       async (
         path: Parameters<typeof actualFs.readFile>[0],
@@ -649,8 +740,9 @@ priority = 150
 
     vi.doMock('node:fs/promises', () => ({
       ...actualFs,
-      default: { ...actualFs, readFile: mockReadFile },
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
       readFile: mockReadFile,
+      readdir: mockReaddir,
     }));
 
     vi.resetModules();
@@ -668,7 +760,8 @@ priority = 150
         r.decision === PolicyDecision.ALLOW,
     );
     expect(rule).toBeDefined();
-    expect(rule?.priority).toBe(150);
+    // Priority 150 in user tier → 2.150
+    expect(rule?.priority).toBeCloseTo(2.15, 5);
 
     vi.doUnmock('node:fs/promises');
   });
@@ -680,6 +773,39 @@ priority = 150
       await vi.importActual<typeof import('node:fs/promises')>(
         'node:fs/promises',
       );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string') {
+          if (path.includes('/tmp/admin/policies')) {
+            return [
+              {
+                name: 'write.toml',
+                isFile: () => true,
+                isDirectory: () => false,
+              },
+            ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+          }
+          if (path.includes('.gemini/policies')) {
+            return [
+              {
+                name: 'write.toml',
+                isFile: () => true,
+                isDirectory: () => false,
+              },
+            ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+          }
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
     const mockReadFile = vi.fn(
       async (
         path: Parameters<typeof actualFs.readFile>[0],
@@ -714,8 +840,9 @@ priority = 150
 
     vi.doMock('node:fs/promises', () => ({
       ...actualFs,
-      default: { ...actualFs, readFile: mockReadFile },
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
       readFile: mockReadFile,
+      readdir: mockReaddir,
     }));
 
     vi.resetModules();
@@ -739,10 +866,221 @@ priority = 150
     );
 
     expect(denyRule).toBeDefined();
-    expect(denyRule?.priority).toBe(200);
+    // Priority 200 in admin tier → 3.200
+    expect(denyRule?.priority).toBeCloseTo(3.2, 5);
     expect(allowRule).toBeDefined();
-    expect(allowRule?.priority).toBe(150);
+    // Priority 150 in user tier → 2.150
+    expect(allowRule?.priority).toBeCloseTo(2.15, 5);
     expect(denyRule!.priority).toBeGreaterThan(allowRule!.priority!);
+
+    delete process.env['GEMINI_CLI_SYSTEM_SETTINGS_PATH'];
+    vi.doUnmock('node:fs/promises');
+  });
+
+  it('should apply priority bands to ensure Admin > User > Default hierarchy', async () => {
+    process.env['GEMINI_CLI_SYSTEM_SETTINGS_PATH'] = '/tmp/admin/settings.json';
+
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string') {
+          if (path.includes('/tmp/admin/policies')) {
+            return [
+              {
+                name: 'admin-policy.toml',
+                isFile: () => true,
+                isDirectory: () => false,
+              },
+            ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+          }
+          if (path.includes('.gemini/policies')) {
+            return [
+              {
+                name: 'user-policy.toml',
+                isFile: () => true,
+                isDirectory: () => false,
+              },
+            ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+          }
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (typeof path === 'string') {
+          // Admin policy with low priority (100)
+          if (path.includes('/tmp/admin/policies/admin-policy.toml')) {
+            return `
+[[rule]]
+toolName = "run_shell_command"
+decision = "deny"
+priority = 100
+`;
+          }
+          // User policy with high priority (900)
+          if (path.includes('.gemini/policies/user-policy.toml')) {
+            return `
+[[rule]]
+toolName = "run_shell_command"
+decision = "allow"
+priority = 900
+`;
+          }
+        }
+        return actualFs.readFile(path, options);
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
+      readFile: mockReadFile,
+      readdir: mockReaddir,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    const adminRule = config.rules?.find(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.DENY,
+    );
+    const userRule = config.rules?.find(
+      (r) =>
+        r.toolName === 'run_shell_command' &&
+        r.decision === PolicyDecision.ALLOW,
+    );
+
+    expect(adminRule).toBeDefined();
+    expect(userRule).toBeDefined();
+
+    // Admin priority should be 3.100 (tier 3 + 100/1000)
+    expect(adminRule?.priority).toBeCloseTo(3.1, 5);
+    // User priority should be 2.900 (tier 2 + 900/1000)
+    expect(userRule?.priority).toBeCloseTo(2.9, 5);
+
+    // Admin rule with low priority should still beat user rule with high priority
+    expect(adminRule!.priority).toBeGreaterThan(userRule!.priority!);
+
+    delete process.env['GEMINI_CLI_SYSTEM_SETTINGS_PATH'];
+    vi.doUnmock('node:fs/promises');
+  });
+
+  it('should apply correct priority transformations for each tier', async () => {
+    process.env['GEMINI_CLI_SYSTEM_SETTINGS_PATH'] = '/tmp/admin/settings.json';
+
+    const actualFs =
+      await vi.importActual<typeof import('node:fs/promises')>(
+        'node:fs/promises',
+      );
+
+    const mockReaddir = vi.fn(
+      async (
+        path: string | Buffer | URL,
+        options?: Parameters<typeof actualFs.readdir>[1],
+      ) => {
+        if (typeof path === 'string') {
+          if (path.includes('/tmp/admin/policies')) {
+            return [
+              {
+                name: 'admin.toml',
+                isFile: () => true,
+                isDirectory: () => false,
+              },
+            ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+          }
+          if (path.includes('.gemini/policies')) {
+            return [
+              {
+                name: 'user.toml',
+                isFile: () => true,
+                isDirectory: () => false,
+              },
+            ] as unknown as Awaited<ReturnType<typeof actualFs.readdir>>;
+          }
+        }
+        return actualFs.readdir(
+          path,
+          options as Parameters<typeof actualFs.readdir>[1],
+        );
+      },
+    );
+
+    const mockReadFile = vi.fn(
+      async (
+        path: Parameters<typeof actualFs.readFile>[0],
+        options: Parameters<typeof actualFs.readFile>[1],
+      ) => {
+        if (typeof path === 'string') {
+          if (path.includes('/tmp/admin/policies/admin.toml')) {
+            return `
+[[rule]]
+toolName = "admin-tool"
+decision = "allow"
+priority = 500
+`;
+          }
+          if (path.includes('.gemini/policies/user.toml')) {
+            return `
+[[rule]]
+toolName = "user-tool"
+decision = "allow"
+priority = 500
+`;
+          }
+        }
+        return actualFs.readFile(path, options);
+      },
+    );
+
+    vi.doMock('node:fs/promises', () => ({
+      ...actualFs,
+      default: { ...actualFs, readFile: mockReadFile, readdir: mockReaddir },
+      readFile: mockReadFile,
+      readdir: mockReaddir,
+    }));
+
+    vi.resetModules();
+    const { createPolicyEngineConfig } = await import('./policy.js');
+
+    const settings: Settings = {};
+    const config = await createPolicyEngineConfig(
+      settings,
+      ApprovalMode.DEFAULT,
+    );
+
+    const adminRule = config.rules?.find((r) => r.toolName === 'admin-tool');
+    const userRule = config.rules?.find((r) => r.toolName === 'user-tool');
+
+    expect(adminRule).toBeDefined();
+    expect(userRule).toBeDefined();
+
+    // Priority 500 in admin tier → 3.500
+    expect(adminRule?.priority).toBeCloseTo(3.5, 5);
+    // Priority 500 in user tier → 2.500
+    expect(userRule?.priority).toBeCloseTo(2.5, 5);
 
     delete process.env['GEMINI_CLI_SYSTEM_SETTINGS_PATH'];
     vi.doUnmock('node:fs/promises');

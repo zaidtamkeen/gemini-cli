@@ -8,7 +8,7 @@ import {
   type PolicyEngineConfig,
   PolicyDecision,
   type PolicyRule,
-  ApprovalMode,
+  type ApprovalMode,
   type PolicyEngine,
   type MessageBus,
   MessageBusType,
@@ -46,31 +46,66 @@ const PolicyRuleSchema = z.object({
   argsPattern: z.string().optional(),
   decision: z.nativeEnum(PolicyDecision),
   priority: z.number(),
+  modes: z.array(z.string()).optional(),
 });
 
 const PolicyFileSchema = z.object({
   rule: z.array(PolicyRuleSchema),
 });
 
+function getPolicyTier(dir: string): number {
+  const DEFAULT_POLICIES_DIR = path.resolve(__dirname, 'policies');
+  const USER_POLICIES_DIR = Storage.getUserPoliciesDir();
+  const systemSettingsPath = getSystemSettingsPath();
+  const ADMIN_POLICIES_DIR = path.join(
+    path.dirname(systemSettingsPath),
+    'policies',
+  );
+
+  // Normalize paths for comparison
+  const normalizedDir = path.resolve(dir);
+  const normalizedDefault = path.resolve(DEFAULT_POLICIES_DIR);
+  const normalizedUser = path.resolve(USER_POLICIES_DIR);
+  const normalizedAdmin = path.resolve(ADMIN_POLICIES_DIR);
+
+  if (normalizedDir === normalizedDefault) return 1;
+  if (normalizedDir === normalizedUser) return 2;
+  if (normalizedDir === normalizedAdmin) return 3;
+
+  // Default to tier 1 if unknown
+  return 1;
+}
+
+function transformPriority(priority: number, tier: number): number {
+  return tier + priority / 1000;
+}
+
 async function loadPoliciesFromConfig(
   approvalMode: ApprovalMode,
   policyDirs: string[],
 ): Promise<PolicyRule[]> {
-  const filesToLoad: string[] = ['read-only.toml'];
-
-  if (approvalMode !== ApprovalMode.YOLO) {
-    filesToLoad.push('write.toml');
-  }
-
-  if (approvalMode === ApprovalMode.YOLO) {
-    filesToLoad.push('default.toml');
-  } else if (approvalMode === ApprovalMode.AUTO_EDIT) {
-    filesToLoad.push('auto-edit.toml');
-  }
-
   let rules: PolicyRule[] = [];
 
   for (const dir of policyDirs) {
+    const tier = getPolicyTier(dir);
+
+    // Scan directory for all .toml files
+    let filesToLoad: string[];
+    try {
+      const dirEntries = await fs.readdir(dir, { withFileTypes: true });
+      filesToLoad = dirEntries
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.toml'))
+        .map((entry) => entry.name);
+    } catch (e) {
+      const error = e as NodeJS.ErrnoException;
+      if (error.code === 'ENOENT') {
+        // Directory doesn't exist, skip it
+        continue;
+      }
+      console.error(`Error reading policy directory ${dir}:`, error);
+      continue;
+    }
+
     for (const file of filesToLoad) {
       const filePath = path.join(dir, file);
       try {
@@ -85,18 +120,27 @@ async function loadPoliciesFromConfig(
           );
           continue;
         }
-        // Convert argsPattern strings to RegExp objects
-        const parsedRules: PolicyRule[] = validationResult.data.rule.map(
-          (rule) => {
-            if (rule.argsPattern) {
-              return {
-                ...rule,
-                argsPattern: new RegExp(rule.argsPattern),
-              };
+        // Convert argsPattern strings to RegExp objects and filter by mode
+        const parsedRules: PolicyRule[] = validationResult.data.rule
+          .filter((rule) => {
+            // If rule has no modes field, it applies to all modes
+            if (!rule.modes || rule.modes.length === 0) {
+              return true;
             }
-            return rule as PolicyRule;
-          },
-        );
+            // Otherwise, check if current approval mode is in the rule's modes list
+            return rule.modes.includes(approvalMode);
+          })
+          .map((rule) => {
+            const policyRule: PolicyRule = {
+              toolName: rule.toolName,
+              decision: rule.decision,
+              priority: transformPriority(rule.priority, tier),
+            };
+            if (rule.argsPattern) {
+              policyRule.argsPattern = new RegExp(rule.argsPattern);
+            }
+            return policyRule;
+          });
         rules = rules.concat(parsedRules);
       } catch (e) {
         const error = e as NodeJS.ErrnoException;
@@ -127,17 +171,27 @@ export async function createPolicyEngineConfig(
   // - When multiple rules match, the highest priority rule is applied
   // - Rules are evaluated in order of priority (highest first)
   //
-  // Priority levels used in this configuration:
-  //   0: Default allow-all (YOLO mode only)
-  //   10: Write tools default to ASK_USER
-  //   15: Auto-edit tool override
-  //   50: Auto-accept read-only tools
+  // Priority bands (tiers):
+  // - Default policies (TOML): 1 + priority/1000 (e.g., priority 100 → 1.100)
+  // - User policies (TOML): 2 + priority/1000 (e.g., priority 100 → 2.100)
+  // - Admin policies (TOML): 3 + priority/1000 (e.g., priority 100 → 3.100)
+  //
+  // This ensures Admin > User > Default hierarchy is always preserved,
+  // while allowing user-specified priorities to work within each tier.
+  //
+  // Settings-based and dynamic rules (not transformed):
+  //   2.95: Tools that the user has selected as "Always Allow" in the interactive UI
   //   85: MCP servers allowed list
   //   90: MCP servers with trust=true
   //   100: Explicitly allowed individual tools
   //   195: Explicitly excluded MCP servers
-  //   199: Tools that the user has selected as "Always Allow" in the interactive UI.
-  //   200: Explicitly excluded individual tools (highest priority)
+  //   200: Explicitly excluded individual tools
+  //
+  // TOML policy priorities (before transformation):
+  //   10: Write tools default to ASK_USER
+  //   15: Auto-edit tool override (becomes 1.015 in default tier)
+  //   50: Read-only tools (becomes 1.05 in default tier)
+  //   999: YOLO mode allow-all (becomes 1.999 in default tier)
 
   // MCP servers that are explicitly allowed in settings.mcp.allowed
   // Priority: 85 (lower than trusted servers)
@@ -223,7 +277,10 @@ export function createPolicyUpdater(
       policyEngine.addRule({
         toolName,
         decision: PolicyDecision.ALLOW,
-        priority: 199, // High priority, but lower than explicit DENY (200)
+        // User tier (2) + high priority (950/1000) = 2.95
+        // This ensures user "always allow" selections are high priority
+        // but still lose to admin policies (3.xxx) and settings excludes (200)
+        priority: 2.95,
       });
     },
   );

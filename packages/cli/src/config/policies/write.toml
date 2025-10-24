@@ -5,6 +5,12 @@ decision = "ask_user"
 priority = 10
 
 [[rule]]
+toolName = "replace"
+decision = "allow"
+priority = 15
+modes = ["autoEdit"]
+
+[[rule]]
 toolName = "save_memory"
 decision = "ask_user"
 priority = 10
