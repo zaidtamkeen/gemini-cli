@@ -557,12 +557,6 @@ My setup is complete. I will provide my first command in the next turn.
     const controller = new AbortController();
     const linkedSignal = AbortSignal.any([signal, controller.signal]);
 
-    const loopDetected = await this.loopDetector.turnStarted(signal);
-    if (loopDetected) {
-      yield { type: GeminiEventType.LoopDetected };
-      return turn;
-    }
-
     const routingContext: RoutingContext = {
       history: this.getChat().getHistory(/*curated=*/ true),
       request,
