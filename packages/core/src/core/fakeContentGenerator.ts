@@ -45,8 +45,10 @@ export class FakeContentGenerator implements ContentGenerator {
           Object.setPrototypeOf(response, GenerateContentResponse.prototype),
         ) ?? [],
       generateContentStream:
-        responses.generateContentStream?.map((response) =>
-          Object.setPrototypeOf(response, GenerateContentResponse.prototype),
+        responses.generateContentStream?.map((responses) =>
+          responses.map((response) =>
+            Object.setPrototypeOf(response, GenerateContentResponse.prototype),
+          ),
         ) ?? [],
       countTokens: responses.countTokens ?? [],
       embedContent: responses.embedContent ?? [],
