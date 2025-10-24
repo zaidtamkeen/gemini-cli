@@ -13,15 +13,6 @@ import * as path from 'node:path';
 import { INSTALL_METADATA_FILENAME } from './extensions/variables.js';
 import type { ExtensionSetting } from './extensions/extensionSettings.js';
 
-export enum ValidTags {
-  DESIGN = 'design',
-  DATABASES = 'databases',
-  CLOUD = 'cloud',
-  SERVICES = 'services',
-  DEVOPS = 'devops',
-  UTILITIES = 'utilities',
-}
-
 /**
  * Extension definition as written to disk in gemini-extension.json files.
  * This should *not* be referenced outside of the logic for reading files.
@@ -36,6 +27,7 @@ export interface ExtensionConfig {
   contextFileName?: string | string[];
   excludeTools?: string[];
   settings?: ExtensionSetting[];
+  tags: string[];
 }
 
 export interface ExtensionUpdateInfo {

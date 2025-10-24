@@ -489,6 +489,18 @@ describe('extension tests', () => {
       expect(extensions[0].mcpServers?.['test-server'].trust).toBeUndefined();
     });
 
+    it('should load valid tags from the extension config', () => {
+      createExtension({
+        extensionsDir: userExtensionsDir,
+        name: 'tagged-extension',
+        version: '1.0.0',
+        tags: ['design', 'cloud'],
+      });
+
+      const extensions = extensionManager.loadExtensions();
+      expect(extensions).toHaveLength(1);
+    });
+
     it('should throw an error for invalid extension names', () => {
       const consoleSpy = vi
         .spyOn(console, 'error')
