@@ -56,7 +56,7 @@ export const useAuthCommand = (settings: LoadedSettings, config: Config) => {
 
   const reloadApiKey = useCallback(async () => {
     const storedKey = (await ApiKeyCredentialStorage.loadApiKey()) ?? '';
-    const envKey = process.env['GEMINI_API_KEY'] ?? undefined;
+    const envKey = process.env['GEMINI_API_KEY'] ?? '';
     const key = storedKey || envKey;
     setApiKeyDefaultValue(key);
     return key; // Return the key for immediate use

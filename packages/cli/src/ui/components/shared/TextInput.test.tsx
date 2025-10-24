@@ -276,17 +276,12 @@ describe('TextInput', () => {
     vi.useRealTimers();
   });
 
-  it('masks the input value', () => {
+  it('renders the input value', () => {
     mockBuffer.setText('secret');
     const { lastFrame } = render(
-      <TextInput
-        buffer={mockBuffer}
-        mask="*"
-        onSubmit={onSubmit}
-        onCancel={onCancel}
-      />,
+      <TextInput buffer={mockBuffer} onSubmit={onSubmit} onCancel={onCancel} />,
     );
-    expect(lastFrame()).toContain('******');
+    expect(lastFrame()).toContain('secret');
   });
 
   it('does not show cursor when not focused', () => {

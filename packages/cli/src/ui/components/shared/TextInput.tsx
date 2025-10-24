@@ -19,7 +19,6 @@ export interface TextInputProps {
   placeholder?: string;
   onSubmit?: (value: string) => void;
   onCancel?: () => void;
-  mask?: string;
   focus?: boolean;
 }
 
@@ -28,7 +27,6 @@ export function TextInput({
   placeholder = '',
   onSubmit,
   onCancel,
-  mask,
   focus = true,
 }: TextInputProps): React.JSX.Element {
   const { text, handleInput, visualCursor, viewportVisualLines } = buffer;
@@ -69,16 +67,14 @@ export function TextInput({
       <Text color={theme.text.secondary}>{placeholder}</Text>
     );
   } else {
-    const maskedLine = mask ? mask.repeat(lineText.length) : lineText;
+    const maskedLine = lineText;
     if (focus) {
       const charAtCursor = cpSlice(maskedLine, cursorCol, cursorCol + 1) || ' ';
-      content = (
-        <Text>
-          {cpSlice(maskedLine, 0, cursorCol)}
-          {chalk.inverse(charAtCursor)}
-          {cpSlice(maskedLine, cursorCol + 1)}
-        </Text>
-      );
+      const lineWithCursor =
+        cpSlice(maskedLine, 0, cursorCol) +
+        chalk.inverse(charAtCursor) +
+        cpSlice(maskedLine, cursorCol + 1);
+      content = <Text>{lineWithCursor}</Text>;
     } else {
       content = <Text>{maskedLine}</Text>;
     }

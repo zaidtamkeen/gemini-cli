@@ -21,14 +21,14 @@ export function ApiAuthDialog({
   onSubmit,
   onCancel,
   error,
-  defaultValue,
+  defaultValue = '',
 }: ApiAuthDialogProps): React.JSX.Element {
   const buffer = useTextBuffer({
     initialText: defaultValue || '',
     initialCursorOffset: defaultValue?.length || 0,
     viewport: {
       width: 100, // Fixed width is sufficient for this dialog
-      height: 1,
+      height: 10,
     },
     isValidPath: () => false, // No path validation needed for API key
   });
