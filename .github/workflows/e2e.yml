@@ -61,6 +61,9 @@ jobs:
           username: '${{ github.repository_owner }}'
           password: '${{ secrets.GITHUB_TOKEN }}'
 
+      - name: 'Pull sandbox image'
+        run: 'docker pull ${{ inputs.image-uri }}'
+
       - name: 'Install dependencies'
         run: 'npm install ${{ inputs.cli-package-name }}@${{ inputs.version }}'
 
