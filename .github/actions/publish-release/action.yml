@@ -144,26 +144,14 @@ runs:
 
     # TODO: Refactor this github specific publishing script to be generalized based upon inputs.
     - name: '📦 Prepare for GitHub release'
-      if: "inputs.npm-registry-url == 'https://npm.pkg.github.com/' && inputs.use-bundle-release == 'true'"
+      if: "inputs.npm-registry-url == 'https://npm.pkg.github.com/'"
       working-directory: '${{ inputs.working-directory }}'
       shell: 'bash'
       run: |
         node ${{ github.workspace }}/scripts/prepare-github-release.js
 
-    - name: '📦 Publish Root Package'
-      if: "${{ inputs.use-bundle-release == 'true' }}"
-      working-directory: '${{ inputs.working-directory }}'
-      env:
-        NODE_AUTH_TOKEN: '${{ inputs.github-token }}'
-        DRY_RUN: '${{ inputs.dry-run }}'
-      shell: 'bash'
-      run: |
-        npm publish \
-          --dry-run="${DRY_RUN}" \
-          --no-tag
-
-    - name: 'Configure npm for publishing to npm'
-      if: "${{ inputs.use-bundle-release == 'false' }}"
+    - name: 'Configure npm for publishing to npm (non-bundle release)'
+      if: "inputs.use-bundle-release == 'false'"
       uses: 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020'
       with:
         node-version-file: '${{ inputs.working-directory }}/.nvmrc'
@@ -171,15 +159,9 @@ runs:
         scope: '${{inputs.npm-registry-scope}}'
 
     - name: 'Get core Token'
-      if: "${{ inputs.use-bundle-release == 'false' }}"
       uses: './.github/actions/npm-auth-token'
       id: 'core-token'
       with:
-        package-name: '${{ inputs.core-package-name }}'
-        github-token: '${{ inputs.github-token }}'
-        wombat-token-core: '${{ inputs.wombat-token-core }}'
-        wombat-token-cli: '${{ inputs.wombat-token-cli }}'
-        wombat-token-a2a-server: '${{ inputs.wombat-token-a2a-server }}'
 
     - name: '📦 Publish CORE to NPM'
       if: "${{ inputs.use-bundle-release == 'false' }}"
