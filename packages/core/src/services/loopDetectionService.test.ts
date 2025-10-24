@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Content } from '@google/genai';
 import type { Config } from '../config/config.js';
+import { DEFAULT_GEMINI_FLASH_MODEL } from '../config/config.js';
 import type { GeminiClient } from '../core/client.js';
 import type { BaseLlmClient } from '../core/baseLlmClient.js';
 import type {
@@ -646,6 +647,7 @@ describe('LoopDetectionService LLM Checks', () => {
       getBaseLlmClient: () => mockBaseLlmClient,
       getDebugMode: () => false,
       getTelemetryEnabled: () => true,
+      getModel: () => 'gemini-1.5-pro',
     } as unknown as Config;
 
     service = new LoopDetectionService(mockConfig);
@@ -678,18 +680,21 @@ describe('LoopDetectionService LLM Checks', () => {
       expect.objectContaining({
         systemInstruction: expect.any(String),
         contents: expect.any(Array),
-        model: expect.any(String),
+        model: DEFAULT_GEMINI_FLASH_MODEL,
         schema: expect.any(Object),
         promptId: expect.any(String),
       }),
     );
   });
 
-  it('should detect a cognitive loop when confidence is high', async () => {
+  it('should detect a cognitive loop when both models have high confidence', async () => {
     // First check at turn 30
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValue({ confidence: 0.85, reasoning: 'Repetitive actions' });
+      .mockResolvedValueOnce({
+        confidence: 0.85,
+        reasoning: 'Repetitive actions',
+      }); // Flash (first check, low confidence)
     await advanceTurns(30);
     expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(1);
 
@@ -697,12 +702,24 @@ describe('LoopDetectionService LLM Checks', () => {
     // The interval will be: 5 + (15 - 5) * (1 - 0.85) = 5 + 10 * 0.15 = 6.5 -> rounded to 7
     await advanceTurns(6); // advance to turn 36
 
+    // Second check at turn 37: Flash is high confidence, triggers main model check
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValue({ confidence: 0.95, reasoning: 'Repetitive actions' });
+      .mockResolvedValueOnce({ confidence: 0.95, reasoning: 'Flash says loop' }) // Flash
+      .mockResolvedValueOnce({ confidence: 0.92, reasoning: 'Pro says loop' }); // Pro
+
     const finalResult = await service.turnStarted(abortController.signal); // This is turn 37
 
     expect(finalResult).toBe(true);
+    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(2);
+    expect(mockBaseLlmClient.generateJson).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ model: DEFAULT_GEMINI_FLASH_MODEL }),
+    );
+    expect(mockBaseLlmClient.generateJson).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ model: 'gemini-1.5-pro' }),
+    );
     expect(loggers.logLoopDetected).toHaveBeenCalledWith(
       mockConfig,
       expect.objectContaining({
@@ -710,6 +727,40 @@ describe('LoopDetectionService LLM Checks', () => {
         loop_type: LoopType.LLM_DETECTED_LOOP,
       }),
     );
+  });
+
+  it('should not detect a loop if the second model disagrees with high confidence', async () => {
+    mockBaseLlmClient.generateJson = vi
+      .fn()
+      .mockResolvedValueOnce({ confidence: 0.95, reasoning: 'Flash says loop' }) // Flash
+      .mockResolvedValueOnce({
+        confidence: 0.5,
+        reasoning: 'Pro says no loop',
+      }); // Pro
+
+    await advanceTurns(30);
+    const result = await service.turnStarted(abortController.signal);
+
+    expect(result).toBe(false);
+    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(2);
+    expect(loggers.logLoopDetected).not.toHaveBeenCalled();
+  });
+
+  it('should update interval based on second model confidence if it disagrees', async () => {
+    mockBaseLlmClient.generateJson = vi
+      .fn()
+      .mockResolvedValueOnce({ confidence: 0.95 }) // Flash (would set interval to ~5)
+      .mockResolvedValueOnce({ confidence: 0.1 }); // Pro (should set interval to ~14)
+
+    await advanceTurns(30);
+    await service.turnStarted(abortController.signal); // Turn 31, triggers checks
+
+    // Interval should be based on 0.1 confidence: 5 + (15-5)*(1-0.1) = 5 + 10*0.9 = 14
+    await advanceTurns(12); // Advance to turn 43 (31 + 12 = 43). 43 - 30 = 13 < 14.
+    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(2); // Still only the initial 2 calls
+
+    await service.turnStarted(abortController.signal); // Turn 44. 44 - 30 = 14 >= 14. Should trigger next check.
+    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(3);
   });
 
   it('should not detect a loop when confidence is low', async () => {
@@ -744,6 +795,20 @@ describe('LoopDetectionService LLM Checks', () => {
     await advanceTurns(30);
     const result = await service.turnStarted(abortController.signal);
     expect(result).toBe(false);
+    expect(loggers.logLoopDetected).not.toHaveBeenCalled();
+  });
+
+  it('should handle errors from the second model gracefully', async () => {
+    mockBaseLlmClient.generateJson = vi
+      .fn()
+      .mockResolvedValueOnce({ confidence: 0.95 }) // Flash succeeds
+      .mockRejectedValueOnce(new Error('API error')); // Pro fails
+
+    await advanceTurns(30);
+    const result = await service.turnStarted(abortController.signal);
+
+    expect(result).toBe(false);
+    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(2);
     expect(loggers.logLoopDetected).not.toHaveBeenCalled();
   });
 

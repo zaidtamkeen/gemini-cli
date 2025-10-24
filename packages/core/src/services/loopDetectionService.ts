@@ -426,41 +426,79 @@ export class LoopDetectionService {
       },
       required: ['reasoning', 'confidence'],
     };
-    let result;
+
+    const flashResult = await this.queryLoopDetectionModel(
+      DEFAULT_GEMINI_FLASH_MODEL,
+      contents,
+      schema,
+      signal,
+    );
+
+    if (flashResult && typeof flashResult['confidence'] === 'number') {
+      if (flashResult['confidence'] > 0.9) {
+        // Double check with configured model
+        const mainModelResult = await this.queryLoopDetectionModel(
+          this.config.getModel(),
+          contents,
+          schema,
+          signal,
+        );
+
+        if (
+          mainModelResult &&
+          typeof mainModelResult['confidence'] === 'number'
+        ) {
+          if (mainModelResult['confidence'] > 0.9) {
+            this.handleConfirmedLoop(mainModelResult);
+            return true;
+          } else {
+            this.updateCheckInterval(mainModelResult['confidence']);
+          }
+        }
+      } else {
+        this.updateCheckInterval(flashResult['confidence']);
+      }
+    }
+
+    return false;
+  }
+
+  private async queryLoopDetectionModel(
+    model: string,
+    contents: Content[],
+    schema: Record<string, unknown>,
+    signal: AbortSignal,
+  ): Promise<Record<string, unknown> | null> {
     try {
-      result = await this.config.getBaseLlmClient().generateJson({
+      return await this.config.getBaseLlmClient().generateJson({
         contents,
         schema,
-        model: DEFAULT_GEMINI_FLASH_MODEL,
+        model,
         systemInstruction: LOOP_DETECTION_SYSTEM_PROMPT,
         abortSignal: signal,
         promptId: this.promptId,
       });
     } catch (e) {
-      // Do nothing, treat it as a non-loop.
       this.config.getDebugMode() ? debugLogger.warn(e) : debugLogger.debug(e);
-      return false;
+      return null;
     }
+  }
 
-    if (typeof result['confidence'] === 'number') {
-      if (result['confidence'] > 0.9) {
-        if (typeof result['reasoning'] === 'string' && result['reasoning']) {
-          debugLogger.warn(result['reasoning']);
-        }
-        logLoopDetected(
-          this.config,
-          new LoopDetectedEvent(LoopType.LLM_DETECTED_LOOP, this.promptId),
-        );
-        return true;
-      } else {
-        this.llmCheckInterval = Math.round(
-          MIN_LLM_CHECK_INTERVAL +
-            (MAX_LLM_CHECK_INTERVAL - MIN_LLM_CHECK_INTERVAL) *
-              (1 - result['confidence']),
-        );
-      }
+  private handleConfirmedLoop(result: Record<string, unknown>): void {
+    if (typeof result['reasoning'] === 'string' && result['reasoning']) {
+      debugLogger.warn(result['reasoning']);
     }
-    return false;
+    logLoopDetected(
+      this.config,
+      new LoopDetectedEvent(LoopType.LLM_DETECTED_LOOP, this.promptId),
+    );
+  }
+
+  private updateCheckInterval(confidence: number): void {
+    this.llmCheckInterval = Math.round(
+      MIN_LLM_CHECK_INTERVAL +
+        (MAX_LLM_CHECK_INTERVAL - MIN_LLM_CHECK_INTERVAL) * (1 - confidence),
+    );
   }
 
   /**
