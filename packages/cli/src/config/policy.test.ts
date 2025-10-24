@@ -136,7 +136,7 @@ describe('createPolicyEngineConfig', () => {
         r.decision === PolicyDecision.ALLOW,
     );
     expect(rule).toBeDefined();
-    expect(rule?.priority).toBeCloseTo(2.1, 5); // User tier: 2.100
+    expect(rule?.priority).toBeCloseTo(2.3, 5); // Command line allow
   });
 
   it('should deny tools in tools.exclude', async () => {
@@ -154,7 +154,7 @@ describe('createPolicyEngineConfig', () => {
         r.decision === PolicyDecision.DENY,
     );
     expect(rule).toBeDefined();
-    expect(rule?.priority).toBeCloseTo(2.2, 5); // User tier: 2.200
+    expect(rule?.priority).toBeCloseTo(2.4, 5); // Command line exclude
   });
 
   it('should allow tools from allowed MCP servers', async () => {
@@ -171,7 +171,7 @@ describe('createPolicyEngineConfig', () => {
         r.toolName === 'my-server__*' && r.decision === PolicyDecision.ALLOW,
     );
     expect(rule).toBeDefined();
-    expect(rule?.priority).toBe(85);
+    expect(rule?.priority).toBe(2.1); // MCP allowed server
   });
 
   it('should deny tools from excluded MCP servers', async () => {
@@ -188,7 +188,7 @@ describe('createPolicyEngineConfig', () => {
         r.toolName === 'my-server__*' && r.decision === PolicyDecision.DENY,
     );
     expect(rule).toBeDefined();
-    expect(rule?.priority).toBe(195);
+    expect(rule?.priority).toBe(2.9); // MCP excluded server
   });
 
   it('should allow tools from trusted MCP servers', async () => {
@@ -218,7 +218,7 @@ describe('createPolicyEngineConfig', () => {
         r.decision === PolicyDecision.ALLOW,
     );
     expect(trustedRule).toBeDefined();
-    expect(trustedRule?.priority).toBe(90);
+    expect(trustedRule?.priority).toBe(2.2); // MCP trusted server
 
     // Untrusted server should not have an allow rule
     const untrustedRule = config.rules?.find(
@@ -256,7 +256,7 @@ describe('createPolicyEngineConfig', () => {
         r.decision === PolicyDecision.ALLOW,
     );
     expect(allowedRule).toBeDefined();
-    expect(allowedRule?.priority).toBe(85);
+    expect(allowedRule?.priority).toBe(2.1); // MCP allowed server
 
     // Check trusted server
     const trustedRule = config.rules?.find(
@@ -265,7 +265,7 @@ describe('createPolicyEngineConfig', () => {
         r.decision === PolicyDecision.ALLOW,
     );
     expect(trustedRule).toBeDefined();
-    expect(trustedRule?.priority).toBe(90);
+    expect(trustedRule?.priority).toBe(2.2); // MCP trusted server
 
     // Check excluded server
     const excludedRule = config.rules?.find(
@@ -274,7 +274,7 @@ describe('createPolicyEngineConfig', () => {
         r.decision === PolicyDecision.DENY,
     );
     expect(excludedRule).toBeDefined();
-    expect(excludedRule?.priority).toBe(195);
+    expect(excludedRule?.priority).toBe(2.9); // MCP excluded server
   });
 
   it('should allow all tools in YOLO mode', async () => {
@@ -350,12 +350,12 @@ describe('createPolicyEngineConfig', () => {
     );
 
     expect(serverDenyRule).toBeDefined();
-    expect(serverDenyRule?.priority).toBe(195);
+    expect(serverDenyRule?.priority).toBe(2.9); // MCP excluded server
     expect(toolAllowRule).toBeDefined();
-    expect(toolAllowRule?.priority).toBeCloseTo(2.1, 5); // User tier: 2.100
+    expect(toolAllowRule?.priority).toBeCloseTo(2.3, 5); // Command line allow
 
-    // Tool allow (2.1) has higher priority than server deny (195),
-    // so tool allow wins
+    // Server deny (2.9) has higher priority than tool allow (2.3),
+    // so server deny wins (this is expected behavior - server-level blocks are security critical)
   });
 
   it('should handle MCP server allows and tool excludes', async () => {
@@ -388,21 +388,22 @@ describe('createPolicyEngineConfig', () => {
 
     expect(serverAllowRule).toBeDefined();
     expect(toolDenyRule).toBeDefined();
-    // MCP server trust (90) has higher priority than command line exclude (2.2)
-    expect(serverAllowRule!.priority).toBeGreaterThan(toolDenyRule!.priority!);
+    // Command line exclude (2.4) has higher priority than MCP server trust (2.2)
+    // This is the correct behavior - specific exclusions should beat general server trust
+    expect(toolDenyRule!.priority).toBeGreaterThan(serverAllowRule!.priority!);
   });
 
   it('should handle complex priority scenarios correctly', async () => {
     const { createPolicyEngineConfig } = await import('./policy.js');
     const settings: Settings = {
       tools: {
-        autoAccept: true, // Priority 50 for read-only tools
-        allowed: ['my-server__tool1', 'other-tool'], // Priority 100
-        exclude: ['my-server__tool2', 'glob'], // Priority 200
+        autoAccept: true, // Not used in policy system (modes handle this)
+        allowed: ['my-server__tool1', 'other-tool'], // Priority 2.3
+        exclude: ['my-server__tool2', 'glob'], // Priority 2.4
       },
       mcp: {
-        allowed: ['allowed-server'], // Priority 85
-        excluded: ['excluded-server'], // Priority 195
+        allowed: ['allowed-server'], // Priority 2.1
+        excluded: ['excluded-server'], // Priority 2.9
       },
       mcpServers: {
         'trusted-server': {
@@ -427,7 +428,7 @@ describe('createPolicyEngineConfig', () => {
     expect(globDenyRule).toBeDefined();
     expect(globAllowRule).toBeDefined();
     // Deny from settings (user tier)
-    expect(globDenyRule!.priority).toBeCloseTo(2.2, 5); // User tier: 2.200
+    expect(globDenyRule!.priority).toBeCloseTo(2.4, 5); // Command line exclude
     // Allow from default TOML: 1 + 50/1000 = 1.05
     expect(globAllowRule!.priority).toBeCloseTo(1.05, 5);
 
@@ -440,9 +441,9 @@ describe('createPolicyEngineConfig', () => {
       }))
       .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
 
-    // Check that the highest priority items are the excludes (user tier: 2.2)
+    // Check that the highest priority items are the excludes (user tier: 2.4)
     const highestPriorityExcludes = priorities?.filter(
-      (p) => Math.abs(p.priority! - 2.2) < 0.01,
+      (p) => Math.abs(p.priority! - 2.4) < 0.01,
     );
     expect(
       highestPriorityExcludes?.every((p) => p.decision === PolicyDecision.DENY),
@@ -525,7 +526,7 @@ describe('createPolicyEngineConfig', () => {
         r.toolName === 'dangerous-tool' && r.decision === PolicyDecision.DENY,
     );
     expect(excludeRule).toBeDefined();
-    expect(excludeRule?.priority).toBeCloseTo(2.2, 5); // User tier: 2.200
+    expect(excludeRule?.priority).toBeCloseTo(2.4, 5); // Command line exclude
   });
 
   it('should handle combination of trusted server and excluded server for same name', async () => {
@@ -560,9 +561,9 @@ describe('createPolicyEngineConfig', () => {
     );
 
     expect(trustRule).toBeDefined();
-    expect(trustRule?.priority).toBe(90);
+    expect(trustRule?.priority).toBe(2.2); // MCP trusted server
     expect(excludeRule).toBeDefined();
-    expect(excludeRule?.priority).toBe(195);
+    expect(excludeRule?.priority).toBe(2.9); // MCP excluded server
 
     // Exclude (195) should win over trust (90) when evaluated
   });

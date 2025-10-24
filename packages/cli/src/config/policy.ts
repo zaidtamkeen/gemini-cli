@@ -122,34 +122,58 @@ export async function createPolicyEngineConfig(
   // This ensures Admin > User > Default hierarchy is always preserved,
   // while allowing user-specified priorities to work within each tier.
   //
-  // Settings-based and dynamic rules:
+  // Settings-based and dynamic rules (all in user tier 2.x):
   //   2.95: Tools that the user has selected as "Always Allow" in the interactive UI
-  //   85: MCP servers allowed list
-  //   90: MCP servers with trust=true
-  //   2.100: Command line flag --allowed-tools (user tier)
-  //   195: Explicitly excluded MCP servers
-  //   2.200: Command line flag --exclude-tools (user tier)
+  //   2.9:  MCP servers excluded list (security: persistent server blocks)
+  //   2.4:  Command line flag --exclude-tools (explicit temporary blocks)
+  //   2.3:  Command line flag --allowed-tools (explicit temporary allows)
+  //   2.2:  MCP servers with trust=true (persistent trusted servers)
+  //   2.1:  MCP servers allowed list (persistent general server allows)
   //
   // TOML policy priorities (before transformation):
-  //   10: Write tools default to ASK_USER
+  //   10: Write tools default to ASK_USER (becomes 1.010 in default tier)
   //   15: Auto-edit tool override (becomes 1.015 in default tier)
-  //   50: Read-only tools (becomes 1.05 in default tier)
+  //   50: Read-only tools (becomes 1.050 in default tier)
   //   999: YOLO mode allow-all (becomes 1.999 in default tier)
 
-  // MCP servers that are explicitly allowed in settings.mcp.allowed
-  // Priority: 85 (lower than trusted servers)
-  if (settings.mcp?.allowed) {
-    for (const serverName of settings.mcp.allowed) {
+  // MCP servers that are explicitly excluded in settings.mcp.excluded
+  // Priority: 2.9 (highest in user tier for security - persistent server blocks)
+  if (settings.mcp?.excluded) {
+    for (const serverName of settings.mcp.excluded) {
       rules.push({
         toolName: `${serverName}__*`,
+        decision: PolicyDecision.DENY,
+        priority: 2.9,
+      });
+    }
+  }
+
+  // Tools that are explicitly excluded in the settings.
+  // Priority: 2.4 (user tier - explicit temporary blocks)
+  if (settings.tools?.exclude) {
+    for (const tool of settings.tools.exclude) {
+      rules.push({
+        toolName: tool,
+        decision: PolicyDecision.DENY,
+        priority: 2.4,
+      });
+    }
+  }
+
+  // Tools that are explicitly allowed in the settings.
+  // Priority: 2.3 (user tier - explicit temporary allows)
+  if (settings.tools?.allowed) {
+    for (const tool of settings.tools.allowed) {
+      rules.push({
+        toolName: tool,
         decision: PolicyDecision.ALLOW,
-        priority: 85,
+        priority: 2.3,
       });
     }
   }
 
   // MCP servers that are trusted in the settings.
-  // Priority: 90 (higher than general allowed servers but lower than explicit tool allows)
+  // Priority: 2.2 (user tier - persistent trusted servers)
   if (settings.mcpServers) {
     for (const [serverName, serverConfig] of Object.entries(
       settings.mcpServers,
@@ -160,44 +184,20 @@ export async function createPolicyEngineConfig(
         rules.push({
           toolName: `${serverName}__*`,
           decision: PolicyDecision.ALLOW,
-          priority: 90,
+          priority: 2.2,
         });
       }
     }
   }
 
-  // Tools that are explicitly allowed in the settings.
-  // Priority: 2.100 (user tier)
-  if (settings.tools?.allowed) {
-    for (const tool of settings.tools.allowed) {
-      rules.push({
-        toolName: tool,
-        decision: PolicyDecision.ALLOW,
-        priority: 2.1,
-      });
-    }
-  }
-
-  // Tools that are explicitly excluded in the settings.
-  // Priority: 2.200 (user tier)
-  if (settings.tools?.exclude) {
-    for (const tool of settings.tools.exclude) {
-      rules.push({
-        toolName: tool,
-        decision: PolicyDecision.DENY,
-        priority: 2.2,
-      });
-    }
-  }
-
-  // MCP servers that are explicitly excluded in settings.mcp.excluded
-  // Priority: 195 (high priority to block servers)
-  if (settings.mcp?.excluded) {
-    for (const serverName of settings.mcp.excluded) {
+  // MCP servers that are explicitly allowed in settings.mcp.allowed
+  // Priority: 2.1 (user tier - persistent general server allows)
+  if (settings.mcp?.allowed) {
+    for (const serverName of settings.mcp.allowed) {
       rules.push({
         toolName: `${serverName}__*`,
-        decision: PolicyDecision.DENY,
-        priority: 195,
+        decision: PolicyDecision.ALLOW,
+        priority: 2.1,
       });
     }
   }

@@ -97,7 +97,7 @@ describe('Policy Engine Integration Tests', () => {
       );
     });
 
-    it('should correctly prioritize MCP server wildcards over command line tool excludes', async () => {
+    it('should correctly prioritize specific tool excludes over MCP server wildcards', async () => {
       const settings: Settings = {
         mcp: {
           allowed: ['my-server'],
@@ -113,12 +113,13 @@ describe('Policy Engine Integration Tests', () => {
       );
       const engine = new PolicyEngine(config);
 
-      // MCP server allowed (priority 85) wins over command line tool exclude (priority 2.2)
+      // MCP server allowed (priority 2.1) provides general allow for server
       expect(engine.check({ name: 'my-server__safe-tool' })).toBe(
         PolicyDecision.ALLOW,
       );
+      // But specific tool exclude (priority 2.4) wins over server allow
       expect(engine.check({ name: 'my-server__dangerous-tool' })).toBe(
-        PolicyDecision.ALLOW, // MCP server allow wins
+        PolicyDecision.DENY,
       );
     });
 
@@ -218,14 +219,12 @@ describe('Policy Engine Integration Tests', () => {
       );
       const engine = new PolicyEngine(config);
 
-      // Edit tool should be allowed (EditTool.Name = 'replace')
+      // Edit tools should be allowed in AUTO_EDIT mode
       expect(engine.check({ name: 'replace' })).toBe(PolicyDecision.ALLOW);
+      expect(engine.check({ name: 'write_file' })).toBe(PolicyDecision.ALLOW);
 
       // Other tools should follow normal rules
       expect(engine.check({ name: 'run_shell_command' })).toBe(
-        PolicyDecision.ASK_USER,
-      );
-      expect(engine.check({ name: 'write_file' })).toBe(
         PolicyDecision.ASK_USER,
       );
     });
@@ -261,25 +260,25 @@ describe('Policy Engine Integration Tests', () => {
 
       // Find rules and verify their priorities
       const blockedToolRule = rules.find((r) => r.toolName === 'blocked-tool');
-      expect(blockedToolRule?.priority).toBe(2.2);
+      expect(blockedToolRule?.priority).toBe(2.4); // Command line exclude
 
       const blockedServerRule = rules.find(
         (r) => r.toolName === 'blocked-server__*',
       );
-      expect(blockedServerRule?.priority).toBe(195);
+      expect(blockedServerRule?.priority).toBe(2.9); // MCP server exclude
 
       const specificToolRule = rules.find(
         (r) => r.toolName === 'specific-tool',
       );
-      expect(specificToolRule?.priority).toBe(2.1);
+      expect(specificToolRule?.priority).toBe(2.3); // Command line allow
 
       const trustedServerRule = rules.find(
         (r) => r.toolName === 'trusted-server__*',
       );
-      expect(trustedServerRule?.priority).toBe(90);
+      expect(trustedServerRule?.priority).toBe(2.2); // MCP trusted server
 
       const mcpServerRule = rules.find((r) => r.toolName === 'mcp-server__*');
-      expect(mcpServerRule?.priority).toBe(85);
+      expect(mcpServerRule?.priority).toBe(2.1); // MCP allowed server
 
       const readOnlyToolRule = rules.find((r) => r.toolName === 'glob');
       // Priority 50 in default tier → 1.05
@@ -412,16 +411,16 @@ describe('Policy Engine Integration Tests', () => {
 
       // Verify each rule has the expected priority
       const tool3Rule = rules.find((r) => r.toolName === 'tool3');
-      expect(tool3Rule?.priority).toBe(2.2); // Excluded tools (user tier)
+      expect(tool3Rule?.priority).toBe(2.4); // Excluded tools (user tier)
 
       const server2Rule = rules.find((r) => r.toolName === 'server2__*');
-      expect(server2Rule?.priority).toBe(195); // Excluded servers
+      expect(server2Rule?.priority).toBe(2.9); // Excluded servers (user tier)
 
       const tool1Rule = rules.find((r) => r.toolName === 'tool1');
-      expect(tool1Rule?.priority).toBe(2.1); // Allowed tools (user tier)
+      expect(tool1Rule?.priority).toBe(2.3); // Allowed tools (user tier)
 
       const server1Rule = rules.find((r) => r.toolName === 'server1__*');
-      expect(server1Rule?.priority).toBe(85); // Allowed servers
+      expect(server1Rule?.priority).toBe(2.1); // Allowed servers (user tier)
 
       const globRule = rules.find((r) => r.toolName === 'glob');
       // Priority 50 in default tier → 1.05
