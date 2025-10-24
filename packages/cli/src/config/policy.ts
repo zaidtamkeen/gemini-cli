@@ -276,13 +276,13 @@ export async function createPolicyEngineConfig(
   // This ensures Admin > User > Default hierarchy is always preserved,
   // while allowing user-specified priorities to work within each tier.
   //
-  // Settings-based and dynamic rules (not transformed):
+  // Settings-based and dynamic rules:
   //   2.95: Tools that the user has selected as "Always Allow" in the interactive UI
   //   85: MCP servers allowed list
   //   90: MCP servers with trust=true
-  //   100: Explicitly allowed individual tools
+  //   2.100: Command line flag --allowed-tools (user tier)
   //   195: Explicitly excluded MCP servers
-  //   200: Explicitly excluded individual tools
+  //   2.200: Command line flag --exclude-tools (user tier)
   //
   // TOML policy priorities (before transformation):
   //   10: Write tools default to ASK_USER
@@ -321,25 +321,25 @@ export async function createPolicyEngineConfig(
   }
 
   // Tools that are explicitly allowed in the settings.
-  // Priority: 100
+  // Priority: 2.100 (user tier)
   if (settings.tools?.allowed) {
     for (const tool of settings.tools.allowed) {
       rules.push({
         toolName: tool,
         decision: PolicyDecision.ALLOW,
-        priority: 100,
+        priority: 2.1,
       });
     }
   }
 
   // Tools that are explicitly excluded in the settings.
-  // Priority: 200
+  // Priority: 2.200 (user tier)
   if (settings.tools?.exclude) {
     for (const tool of settings.tools.exclude) {
       rules.push({
         toolName: tool,
         decision: PolicyDecision.DENY,
-        priority: 200,
+        priority: 2.2,
       });
     }
   }
