@@ -298,9 +298,19 @@ export class GeminiChat {
             lastError = error;
             const isContentError = error instanceof InvalidStreamError;
 
+            if (error instanceof Error && error.name === 'AbortError') {
+              throw error;
+            }
+
             if (isContentError) {
               // Check if we have more attempts left.
               if (attempt < INVALID_CONTENT_RETRY_OPTIONS.maxAttempts - 1) {
+                // On a content error, the failed model turn was already added to the history.
+                // We need to remove it before the next attempt.
+                if (self.history[self.history.length - 1]?.role === 'model') {
+                  self.history.pop();
+                }
+
                 logContentRetry(
                   self.config,
                   new ContentRetryEvent(
@@ -386,7 +396,7 @@ export class GeminiChat {
       signal: params.config?.abortSignal,
     });
 
-    return this.processStreamResponse(model, streamResponse);
+    return this.processStreamResponse(model, streamResponse, params);
   }
 
   /**
@@ -491,6 +501,7 @@ export class GeminiChat {
   private async *processStreamResponse(
     model: string,
     streamResponse: AsyncGenerator<GenerateContentResponse>,
+    params: SendMessageParameters,
   ): AsyncGenerator<GenerateContentResponse> {
     const modelResponseParts: Part[] = [];
 
@@ -575,6 +586,11 @@ export class GeminiChat {
       // - No finish reason, OR
       // - Empty response text (e.g., only thoughts with no actual content)
       if (!hasToolCall && (!hasFinishReason || !responseText)) {
+        // We don't want to throw an error if the stream was aborted.
+        if (params.config?.abortSignal?.aborted) {
+          // eslint-disable-next-line no-unsafe-finally
+          return;
+        }
         if (!hasFinishReason) {
           // eslint-disable-next-line no-unsafe-finally
           throw new InvalidStreamError(
