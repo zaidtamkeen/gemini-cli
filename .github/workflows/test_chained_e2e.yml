@@ -36,22 +36,6 @@ jobs:
           secret: '${{ secrets.GITHUB_TOKEN }}'
     continue-on-error: true
 
-  generate_app_token:
-    name: 'Generate App Token'
-    runs-on: ubuntu-latest
-    outputs:
-      token: '${{ steps.generate_token.outputs.token }}'
-    steps:
-      - name: 'Generate GitHub App Token 🔑'
-        id: 'generate_token'
-        uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b' # ratchet:actions/create-github-app-token@v2
-        with:
-          app-id: '${{ secrets.APP_ID }}'
-          private-key: '${{ secrets.PRIVATE_KEY }}'
-          permission-statuses: 'write'
-          permission-contents: 'read'
-    continue-on-error: true
-
   download_repo_name:
     runs-on: 'gemini-cli-ubuntu-16-core'
     if: "github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_run'"
@@ -115,7 +99,6 @@ jobs:
     if: "github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_run'"
     needs:
       - 'parse_run_context'
-      - 'generate_app_token'
     steps:
       - name: 'Set pending status'
         uses: 'myrotvorets/set-commit-status-action@16037e056d73b2d3c88e37e393ff369047f70886' # ratchet:myrotvorets/set-commit-status-action@master
@@ -124,7 +107,7 @@ jobs:
           allowForks: 'true'
           repo: '${{ needs.parse_run_context.outputs.repository }}'
           sha: '${{ needs.parse_run_context.outputs.sha }}'
-          token: '${{ needs.generate_app_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          token: '${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT || secrets.GITHUB_TOKEN }}'
           status: 'pending'
 
   e2e_linux:
@@ -305,7 +288,6 @@ jobs:
     needs:
       - 'parse_run_context'
       - 'e2e'
-      - 'generate_app_token'
     steps:
       - name: 'Set workflow status'
         uses: 'myrotvorets/set-commit-status-action@16037e056d73b2d3c88e37e393ff369047f70886' # ratchet:myrotvorets/set-commit-status-action@master
@@ -314,5 +296,5 @@ jobs:
           allowForks: 'true'
           repo: '${{ needs.parse_run_context.outputs.repository }}'
           sha: '${{ needs.parse_run_context.outputs.sha }}'
-          token: '${{ needs.generate_app_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          token: '${{ secrets.GEMINI_CLI_ROBOT_GITHUB_PAT || secrets.GITHUB_TOKEN }}'
           status: '${{ job.status }}'
