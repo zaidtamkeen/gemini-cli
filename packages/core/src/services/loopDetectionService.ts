@@ -387,6 +387,17 @@ export class LoopDetectionService {
       recentHistory.shift();
     }
 
+    if (recentHistory.length > 0 && isFunctionCall(recentHistory[0])) {
+      recentHistory.unshift({
+        role: 'user',
+        parts: [
+          {
+            text: `Here are the most recent ${LLM_LOOP_CHECK_HISTORY_COUNT} turns of conversation history.`,
+          },
+        ],
+      });
+    }
+
     return recentHistory;
   }
 
