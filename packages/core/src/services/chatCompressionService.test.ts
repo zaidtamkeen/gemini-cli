@@ -15,7 +15,7 @@ import { uiTelemetryService } from '../telemetry/uiTelemetry.js';
 import { tokenLimit } from '../core/tokenLimits.js';
 import type { GeminiChat } from '../core/geminiChat.js';
 import type { Config } from '../config/config.js';
-import { getEnvironmentContext } from '../utils/environmentContext.js';
+import { getInitialChatHistory } from '../utils/environmentContext.js';
 import type { ContentGenerator } from '../core/contentGenerator.js';
 
 vi.mock('../telemetry/uiTelemetry.js');
@@ -122,7 +122,9 @@ describe('ChatCompressionService', () => {
 
     vi.mocked(tokenLimit).mockReturnValue(1000);
     vi.mocked(uiTelemetryService.getLastPromptTokenCount).mockReturnValue(500);
-    vi.mocked(getEnvironmentContext).mockResolvedValue([]);
+    vi.mocked(getInitialChatHistory).mockImplementation(
+      async (_config, extraHistory) => extraHistory || [],
+    );
   });
 
   afterEach(() => {

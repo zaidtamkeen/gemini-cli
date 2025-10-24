@@ -14,7 +14,7 @@ import { getCompressionPrompt } from '../core/prompts.js';
 import { getResponseText } from '../utils/partUtils.js';
 import { logChatCompression } from '../telemetry/loggers.js';
 import { makeChatCompressionEvent } from '../telemetry/types.js';
-import { getEnvironmentContext } from '../utils/environmentContext.js';
+import { getInitialChatHistory } from '../utils/environmentContext.js';
 
 /**
  * Threshold for compression token count as a fraction of the model's token limit.
@@ -176,27 +176,8 @@ export class ChatCompressionService {
       ...historyToKeep,
     ];
 
-    // Replicate startChat logic for history construction to get accurate token count
-    const envParts = await getEnvironmentContext(config);
-    const envContextString = envParts
-      .map((part) => part.text || '')
-      .join('\n\n');
-
-    const allSetupText = `
-${envContextString}
-
-Reminder: Do not return an empty response when a tool call is required.
-
-My setup is complete. I will provide my first command in the next turn.
-    `.trim();
-
-    const fullNewHistory: Content[] = [
-      {
-        role: 'user',
-        parts: [{ text: allSetupText }],
-      },
-      ...extraHistory,
-    ];
+    // Use a shared utility to construct the initial history for an accurate token count.
+    const fullNewHistory = await getInitialChatHistory(config, extraHistory);
 
     // Estimate token count 1 token ≈ 4 characters
     const newTokenCount = Math.floor(
