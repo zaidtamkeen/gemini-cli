@@ -43,6 +43,7 @@ function getPolicyDirectories(): string[] {
 
 const PolicyRuleSchema = z.object({
   toolName: z.string().optional(),
+  mcpName: z.string().optional(),
   argsPattern: z.string().optional(),
   decision: z.nativeEnum(PolicyDecision),
   priority: z.number(),
@@ -131,8 +132,21 @@ async function loadPoliciesFromConfig(
             return rule.modes.includes(approvalMode);
           })
           .map((rule) => {
+            // Transform mcpName field to composite toolName format
+            let effectiveToolName: string | undefined;
+            if (rule.mcpName && rule.toolName) {
+              // Both mcpName and toolName: create composite format
+              effectiveToolName = `${rule.mcpName}__${rule.toolName}`;
+            } else if (rule.mcpName) {
+              // Only mcpName: create server wildcard
+              effectiveToolName = `${rule.mcpName}__*`;
+            } else {
+              // Only toolName or neither: use as-is
+              effectiveToolName = rule.toolName;
+            }
+
             const policyRule: PolicyRule = {
-              toolName: rule.toolName,
+              toolName: effectiveToolName,
               decision: rule.decision,
               priority: transformPriority(rule.priority, tier),
             };
