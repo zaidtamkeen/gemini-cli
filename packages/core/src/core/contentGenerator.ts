@@ -160,7 +160,7 @@ export async function createContentGenerator(
   })();
 
   if (gcConfig.recordResponses) {
-    return new RecordingContentGenerator(generator);
+    return new RecordingContentGenerator(generator, gcConfig.recordResponses);
   }
 
   return generator;

@@ -11,22 +11,22 @@ import type {
   GenerateContentParameters,
   CountTokensParameters,
   EmbedContentParameters,
+  ContentEmbedding,
 } from '@google/genai';
-import { promises as fs } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { safeJsonStringify } from '../utils/safeJsonStringify.js';
 import type { ContentGenerator } from './contentGenerator.js';
 import { RecordingContentGenerator } from './recordingContentGenerator.js';
 
 vi.mock('node:fs', () => ({
-  promises: {
-    writeFile: vi.fn(),
-  },
+  appendFileSync: vi.fn(),
 }));
 
 describe('RecordingContentGenerator', () => {
   let mockRealGenerator: ContentGenerator;
   let recorder: RecordingContentGenerator;
+  const filePath = '/test/file/responses.json';
 
   beforeEach(() => {
     mockRealGenerator = {
@@ -35,22 +35,8 @@ describe('RecordingContentGenerator', () => {
       countTokens: vi.fn(),
       embedContent: vi.fn(),
     };
-    recorder = new RecordingContentGenerator(mockRealGenerator);
-    vi.resetAllMocks();
-  });
-
-  it('should write responses to a file', async () => {
-    const filePath = '/fake/path/responses.json';
-    await recorder.writeResponses(filePath);
-    expect(fs.writeFile).toHaveBeenCalledWith(
-      filePath,
-      safeJsonStringify({
-        generateContent: [],
-        generateContentStream: [],
-        countTokens: [],
-        embedContent: [],
-      }),
-    );
+    recorder = new RecordingContentGenerator(mockRealGenerator, filePath);
+    vi.clearAllMocks();
   });
 
   it('should record generateContent responses', async () => {
@@ -69,21 +55,12 @@ describe('RecordingContentGenerator', () => {
     expect(response).toEqual(mockResponse);
     expect(mockRealGenerator.generateContent).toHaveBeenCalledWith({}, 'id1');
 
-    const filePath = '/fake/path/responses.json';
-    await recorder.writeResponses(filePath);
-    expect(fs.writeFile).toHaveBeenCalledWith(
+    expect(appendFileSync).toHaveBeenCalledWith(
       filePath,
       safeJsonStringify({
-        generateContent: [
-          {
-            candidates: mockResponse.candidates,
-            usageMetadata: mockResponse.usageMetadata,
-          },
-        ],
-        generateContentStream: [],
-        countTokens: [],
-        embedContent: [],
-      }),
+        method: 'generateContent',
+        response: mockResponse,
+      }) + '\n',
     );
   });
 
@@ -125,27 +102,12 @@ describe('RecordingContentGenerator', () => {
       'id1',
     );
 
-    const filePath = '/fake/path/responses.json';
-    await recorder.writeResponses(filePath);
-    expect(fs.writeFile).toHaveBeenCalledWith(
+    expect(appendFileSync).toHaveBeenCalledWith(
       filePath,
       safeJsonStringify({
-        generateContent: [],
-        generateContentStream: [
-          [
-            {
-              candidates: mockResponse1.candidates,
-              usageMetadata: mockResponse1.usageMetadata,
-            },
-            {
-              candidates: mockResponse2.candidates,
-              usageMetadata: mockResponse2.usageMetadata,
-            },
-          ],
-        ],
-        countTokens: [],
-        embedContent: [],
-      }),
+        method: 'generateContentStream',
+        response: responses,
+      }) + '\n',
     );
   });
 
@@ -160,49 +122,30 @@ describe('RecordingContentGenerator', () => {
     expect(response).toEqual(mockResponse);
     expect(mockRealGenerator.countTokens).toHaveBeenCalledWith({});
 
-    const filePath = '/fake/path/responses.json';
-    await recorder.writeResponses(filePath);
-    expect(fs.writeFile).toHaveBeenCalledWith(
+    expect(appendFileSync).toHaveBeenCalledWith(
       filePath,
       safeJsonStringify({
-        generateContent: [],
-        generateContentStream: [],
-        countTokens: [
-          {
-            totalTokens: mockResponse.totalTokens,
-            cachedContentTokenCount: mockResponse.cachedContentTokenCount,
-          },
-        ],
-        embedContent: [],
-      }),
+        method: 'countTokens',
+        response: mockResponse,
+      }) + '\n',
     );
   });
 
   it('should record embedContent responses', async () => {
     const mockResponse = {
-      embedding: { values: [1, 2, 3] },
-    } as unknown as EmbedContentResponse;
+      embeddings: [{ values: [1, 2, 3] } as ContentEmbedding],
+    } as EmbedContentResponse;
     (mockRealGenerator.embedContent as Mock).mockResolvedValue(mockResponse);
 
     const response = await recorder.embedContent({} as EmbedContentParameters);
     expect(response).toEqual(mockResponse);
     expect(mockRealGenerator.embedContent).toHaveBeenCalledWith({});
-
-    const filePath = '/fake/path/responses.json';
-    await recorder.writeResponses(filePath);
-    expect(fs.writeFile).toHaveBeenCalledWith(
+    expect(appendFileSync).toHaveBeenCalledWith(
       filePath,
       safeJsonStringify({
-        generateContent: [],
-        generateContentStream: [],
-        countTokens: [],
-        embedContent: [
-          {
-            embeddings: mockResponse.embeddings,
-            metadata: mockResponse.metadata,
-          },
-        ],
-      }),
+        method: 'embedContent',
+        response: mockResponse,
+      }) + '\n',
     );
   });
 });

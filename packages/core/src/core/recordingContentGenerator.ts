@@ -12,11 +12,11 @@ import type {
   EmbedContentResponse,
   EmbedContentParameters,
 } from '@google/genai';
-import { promises } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import type { ContentGenerator } from './contentGenerator.js';
+import type { FakeResponse } from './fakeContentGenerator.js';
 import type { UserTierId } from '../code_assist/types.js';
 import { safeJsonStringify } from '../utils/safeJsonStringify.js';
-import type { FakeResponses } from './fakeContentGenerator.js';
 
 // A ContentGenerator that wraps another content generator and records all the
 // responses, with the ability to write them out to a file. These files are
@@ -25,22 +25,12 @@ import type { FakeResponses } from './fakeContentGenerator.js';
 //
 // Note that only the "interesting" bits of the responses are actually kept.
 export class RecordingContentGenerator implements ContentGenerator {
-  private recordedResponses: FakeResponses = {
-    generateContent: [],
-    generateContentStream: [],
-    countTokens: [],
-    embedContent: [],
-  };
   userTier?: UserTierId;
 
-  constructor(private readonly realGenerator: ContentGenerator) {}
-
-  async writeResponses(filePath: string): Promise<void> {
-    await promises.writeFile(
-      filePath,
-      safeJsonStringify(this.recordedResponses),
-    );
-  }
+  constructor(
+    private readonly realGenerator: ContentGenerator,
+    private readonly filePath: string,
+  ) {}
 
   async generateContent(
     request: GenerateContentParameters,
@@ -50,10 +40,11 @@ export class RecordingContentGenerator implements ContentGenerator {
       request,
       userPromptId,
     );
-    this.recordedResponses.generateContent.push({
-      candidates: response.candidates,
-      usageMetadata: response.usageMetadata,
-    } as GenerateContentResponse);
+    const recordedResponse: FakeResponse = {
+      method: 'generateContent',
+      response,
+    };
+    appendFileSync(this.filePath, `${safeJsonStringify(recordedResponse)}\n`);
     return response;
   }
 
@@ -61,46 +52,58 @@ export class RecordingContentGenerator implements ContentGenerator {
     request: GenerateContentParameters,
     userPromptId: string,
   ): Promise<AsyncGenerator<GenerateContentResponse>> {
-    const streamResponses: GenerateContentResponse[] = [];
-    this.recordedResponses.generateContentStream.push(streamResponses);
+    const recordedResponse: FakeResponse = {
+      method: 'generateContentStream',
+      response: [],
+    };
 
     const realResponses = await this.realGenerator.generateContentStream(
       request,
       userPromptId,
     );
 
-    async function* stream() {
+    async function* stream(filePath: string) {
       for await (const response of realResponses) {
-        streamResponses.push({
+        (recordedResponse.response as GenerateContentResponse[]).push({
           candidates: response.candidates,
           usageMetadata: response.usageMetadata,
         } as GenerateContentResponse);
         yield response;
       }
+      appendFileSync(filePath, `${safeJsonStringify(recordedResponse)}\n`);
     }
 
-    return Promise.resolve(stream());
+    return Promise.resolve(stream(this.filePath));
   }
 
   async countTokens(
-    _request: CountTokensParameters,
+    request: CountTokensParameters,
   ): Promise<CountTokensResponse> {
-    const response = await this.realGenerator.countTokens(_request);
-    this.recordedResponses.countTokens.push({
-      totalTokens: response.totalTokens,
-      cachedContentTokenCount: response.cachedContentTokenCount,
-    });
+    const response = await this.realGenerator.countTokens(request);
+    const recordedResponse: FakeResponse = {
+      method: 'countTokens',
+      response: {
+        totalTokens: response.totalTokens,
+        cachedContentTokenCount: response.cachedContentTokenCount,
+      },
+    };
+    appendFileSync(this.filePath, `${safeJsonStringify(recordedResponse)}\n`);
     return response;
   }
 
   async embedContent(
-    _request: EmbedContentParameters,
+    request: EmbedContentParameters,
   ): Promise<EmbedContentResponse> {
-    const response = await this.realGenerator.embedContent(_request);
-    this.recordedResponses.embedContent.push({
-      embeddings: response.embeddings,
-      metadata: response.metadata,
-    });
+    const response = await this.realGenerator.embedContent(request);
+
+    const recordedResponse: FakeResponse = {
+      method: 'embedContent',
+      response: {
+        embeddings: response.embeddings,
+        metadata: response.metadata,
+      },
+    };
+    appendFileSync(this.filePath, `${safeJsonStringify(recordedResponse)}\n`);
     return response;
   }
 }

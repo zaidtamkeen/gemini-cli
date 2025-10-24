@@ -37,7 +37,6 @@ import {
   getPty,
   EDIT_TOOL_NAME,
   debugLogger,
-  RecordingContentGenerator,
 } from '@google/gemini-cli-core';
 import type { Settings } from './settings.js';
 
@@ -45,7 +44,6 @@ import { getCliVersion } from '../utils/version.js';
 import { loadSandboxConfig } from './sandboxConfig.js';
 import { resolvePath } from '../utils/resolvePath.js';
 import { appEvents } from '../utils/events.js';
-import { registerCleanup } from '../utils/cleanup.js';
 
 import { isWorkspaceTrusted } from './trustedFolders.js';
 import { createPolicyEngineConfig } from './policy.js';
@@ -587,7 +585,7 @@ export async function loadCliConfig(
 
   const ptyInfo = await getPty();
 
-  const config = new Config({
+  return new Config({
     sessionId,
     embeddingModel: DEFAULT_GEMINI_EMBEDDING_MODEL,
     sandbox: sandboxConfig,
@@ -666,20 +664,6 @@ export async function loadCliConfig(
     retryFetchErrors: settings.general?.retryFetchErrors ?? false,
     ptyInfo: ptyInfo?.name,
   });
-  // TODO: Consider moving `registerCleanup` into core, so this can move inside
-  // `createContentGenerator`.
-  const contentGenerator = config.getContentGenerator();
-  if (
-    argv.recordResponses &&
-    contentGenerator instanceof RecordingContentGenerator
-  ) {
-    registerCleanup(() =>
-      (contentGenerator as RecordingContentGenerator).writeResponses(
-        argv.recordResponses as string,
-      ),
-    );
-  }
-  return config;
 }
 
 function allowedMcpServers(
