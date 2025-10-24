@@ -26,6 +26,27 @@ describe('Hierarchical Memory Loading', () => {
     await rig.cleanup();
   });
 
+  it('should load GEMINI.md hierarchically from parent directories', async () => {
+    const rig = new TestRig();
+    await rig.setup('hierarchical-memory-parent');
+
+    const rootSecret = 'ROOT_SECRET_KEYWORD';
+    rig.createFile('GEMINI.md', `Root secret: ${rootSecret}`);
+
+    const subdir = join(rig.testDir!, 'subdir');
+    mkdirSync(subdir);
+    const subdirSecret = 'SUBDIR_SECRET_KEYWORD';
+    writeFileSync(join(subdir, 'GEMINI.md'), `Subdir secret: ${subdirSecret}`);
+
+    // Run from subdir
+    const output = await rig.run({
+      prompt: `What are the root secret and subdir secret? Return them as a comma separated list.`,
+      cwd: subdir,
+    });
+
+    validateModelOutput(output, [rootSecret, subdirSecret]);
+  });
+
   it('should load GEMINI.md from installed extensions', async () => {
     const rig = new TestRig();
     await rig.setup('hierarchical-memory-extension');
