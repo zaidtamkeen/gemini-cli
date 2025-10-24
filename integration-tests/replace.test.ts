@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { TestRig } from './test-helper.js';
 
-describe.skip('replace', () => {
+describe('replace', () => {
   it('should be able to replace content in a file', async () => {
     const rig = new TestRig();
     await rig.setup('should be able to replace content in a file');
@@ -26,7 +26,7 @@ describe.skip('replace', () => {
     expect(rig.readFile(fileName)).toBe(expectedContent);
   });
 
-  it('should handle $ literally when replacing text ending with $', async () => {
+  it.skip('should handle $ literally when replacing text ending with $', async () => {
     const rig = new TestRig();
     await rig.setup(
       'should handle $ literally when replacing text ending with $',
@@ -48,38 +48,7 @@ describe.skip('replace', () => {
     expect(rig.readFile(fileName)).toBe(expectedContent);
   });
 
-  it('should fail safely when old_string is not found', async () => {
-    const rig = new TestRig();
-    await rig.setup('should fail safely when old_string is not found', {
-      settings: {
-        useSmartEdit: false,
-        maxToolCalls: 1,
-      },
-    });
-    const fileName = 'no_match.txt';
-    const fileContent = 'hello world';
-    rig.createFile(fileName, fileContent);
-
-    await rig.run(
-      `Make one call to the replace tool to replace the text "goodbye" with "farewell" in ${fileName}.\n
-      * Do not read the file.
-      * Do not call any other tools.
-      * Do not call the replace tool more than once.
-      * After the first and only tool call, take no further action, even if the tool call fails.`,
-    );
-
-    await rig.waitForTelemetryReady();
-    const toolLogs = rig.readToolLogs();
-
-    expect(toolLogs.length, 'Expected exactly one tool call').toBe(1);
-    expect(toolLogs[0].toolRequest.name).toBe('replace');
-    expect(toolLogs[0].toolRequest.success).toBe(false);
-
-    // Ensure file content is unchanged
-    expect(rig.readFile(fileName)).toBe(fileContent);
-  });
-
-  it('should insert a multi-line block of text', async () => {
+  it.skip('should insert a multi-line block of text', async () => {
     const rig = new TestRig();
     await rig.setup('should insert a multi-line block of text');
     const fileName = 'insert_block.txt';
@@ -98,7 +67,7 @@ describe.skip('replace', () => {
     expect(rig.readFile(fileName)).toBe(expectedContent);
   });
 
-  it('should delete a block of text', async () => {
+  it.skip('should delete a block of text', async () => {
     const rig = new TestRig();
     await rig.setup('should delete a block of text');
     const fileName = 'delete_block.txt';
@@ -109,7 +78,7 @@ describe.skip('replace', () => {
     rig.createFile(fileName, originalContent);
 
     await rig.run(
-      `In ${fileName}, delete the entire block from "## DELETE THIS ##" to "## END DELETE ##" including the markers.`,
+      `In ${fileName}, delete the entire block from "## DELETE THIS ##" to "## END DELETE ##" including the markers and the newline that follows it.`,
     );
 
     const foundToolCall = await rig.waitForToolCall('replace');

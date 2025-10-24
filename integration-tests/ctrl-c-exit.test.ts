@@ -11,12 +11,14 @@ import { TestRig } from './test-helper.js';
 describe('Ctrl+C exit', () => {
   it('should exit gracefully on second Ctrl+C', async () => {
     const rig = new TestRig();
-    await rig.setup('should exit gracefully on second Ctrl+C');
+    await rig.setup('should exit gracefully on second Ctrl+C', {
+      settings: { tools: { useRipgrep: false } },
+    });
 
     const run = await rig.runInteractive();
 
     // Send first Ctrl+C
-    run.type('\x03');
+    run.sendKeys('\x03');
 
     await run.expectText('Press Ctrl+C again to exit', 5000);
 
@@ -40,7 +42,7 @@ describe('Ctrl+C exit', () => {
     }
 
     // Send second Ctrl+C
-    run.type('\x03');
+    run.sendKeys('\x03');
 
     const exitCode = await run.expectExit();
     expect(exitCode, `Process exited with code ${exitCode}.`).toBe(0);
