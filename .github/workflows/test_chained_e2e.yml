@@ -22,10 +22,6 @@ concurrency:
   cancel-in-progress: |-
     ${{ github.event_name != 'push' && github.event_name != 'merge_group' }}
 
-permissions:
-  contents: 'read'
-  statuses: 'write'
-
 jobs:
   merge_queue_skipper:
     name: 'Merge Queue Skipper'
@@ -38,6 +34,22 @@ jobs:
         uses: 'cariad-tech/merge-queue-ci-skipper@1032489e59437862c90a08a2c92809c903883772' # ratchet:cariad-tech/merge-queue-ci-skipper@main
         with:
           secret: '${{ secrets.GITHUB_TOKEN }}'
+    continue-on-error: true
+
+  generate_app_token:
+    name: 'Generate App Token'
+    runs-on: ubuntu-latest
+    outputs:
+      token: '${{ steps.generate_token.outputs.token }}'
+    steps:
+      - name: 'Generate GitHub App Token 🔑'
+        id: 'generate_token'
+        uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b' # ratchet:actions/create-github-app-token@v2
+        with:
+          app-id: '${{ secrets.APP_ID }}'
+          private-key: '${{ secrets.PRIVATE_KEY }}'
+          permission-statuses: 'write'
+          permission-contents: 'read'
     continue-on-error: true
 
   download_repo_name:
@@ -103,6 +115,7 @@ jobs:
     if: "github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_run'"
     needs:
       - 'parse_run_context'
+      - 'generate_app_token'
     steps:
       - name: 'Set pending status'
         uses: 'myrotvorets/set-commit-status-action@16037e056d73b2d3c88e37e393ff369047f70886' # ratchet:myrotvorets/set-commit-status-action@master
@@ -111,7 +124,7 @@ jobs:
           allowForks: 'true'
           repo: '${{ needs.parse_run_context.outputs.repository }}'
           sha: '${{ needs.parse_run_context.outputs.sha }}'
-          token: '${{ secrets.GITHUB_TOKEN }}'
+          token: '${{ needs.generate_app_token.outputs.token || secrets.GITHUB_TOKEN }}'
           status: 'pending'
 
   e2e_linux:
@@ -292,6 +305,7 @@ jobs:
     needs:
       - 'parse_run_context'
       - 'e2e'
+      - 'generate_app_token'
     steps:
       - name: 'Set workflow status'
         uses: 'myrotvorets/set-commit-status-action@16037e056d73b2d3c88e37e393ff369047f70886' # ratchet:myrotvorets/set-commit-status-action@master
@@ -300,5 +314,5 @@ jobs:
           allowForks: 'true'
           repo: '${{ needs.parse_run_context.outputs.repository }}'
           sha: '${{ needs.parse_run_context.outputs.sha }}'
-          token: '${{ secrets.GITHUB_TOKEN }}'
+          token: '${{ needs.generate_app_token.outputs.token || secrets.GITHUB_TOKEN }}'
           status: '${{ job.status }}'
