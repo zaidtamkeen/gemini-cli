@@ -287,6 +287,7 @@ General contributors who only use the public `npmjs.org` registry may not need
 to perform this setup.
 
 This project uses a hybrid registry model:
+
 - Production packages (e.g., `@google/gemini-cli`) are published to `npmjs.org`.
 - Pre-release and development packages (e.g., `@google-gemini/gemini-cli`) are
   published to **GitHub Packages**.
@@ -309,7 +310,8 @@ This command will:
 2.  **Back up** your existing `~/.npmrc` to `~/.npmrc.bak` if a backup doesn't
     already exist.
 3.  **Overwrite** your `~/.npmrc` with the correct configuration to pull
-    packages from both `npmjs.org` and `npm.pkg.github.com` based on their scope.
+    packages from both `npmjs.org` and `npm.pkg.github.com` based on their
+    scope.
 
 After running this, you can install packages from both registries without any
 further configuration. If your GitHub token expires, you can simply run the

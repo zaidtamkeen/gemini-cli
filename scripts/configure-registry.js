@@ -109,9 +109,7 @@ function setupNpmrc() {
 
   fs.writeFileSync(npmrcPath, newContent);
   console.log(`✅ Successfully configured your ~/.npmrc file.`);
-  console.log(
-    'You can now install both production and pre-release packages.',
-  );
+  console.log('You can now install both production and pre-release packages.');
 }
 
 setupNpmrc();
