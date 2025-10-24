@@ -5,10 +5,19 @@ document includes:
 
 - **[Before you begin](#before-you-begin):** Essential steps to take before
   becoming a Gemini CLI contributor.
-- **[Code contribution process](#code-contribution-process):** How to contribute
-  code to Gemini CLI.
-- **[Documentation contribution process](#documentation-contribution-process):**
-  How to contribute documentation to Gemini CLI.
+- **Code contributions:**
+  - **[Code contribution process](#code-contribution-process):** Contribute code
+    to Gemini CLI.
+  - **[Forking](#forking):** Fork the repository and set up integration testing.
+  - **[Development setup and workflow](#development-setup-and-workflow):** Set
+    up a development environment.
+  - **[Debugging](#debugging):** Debug in VS Code and React DevTools.
+  - **[Sandboxing](#sandboxing):** Sandbox with macOS Seatbelt or
+    container-based sandboxing.
+  - **[Manual publish](#manual-publish):** Manually cut a local build.
+- **Documentation contributions:**
+  - **[Documentation contribution process](#documentation-contribution-process):**
+    Contribute documentation to Gemini CLI.
 
 We're looking forward to seeing your contributions!
 
@@ -34,6 +43,16 @@ This project follows
 [Google's Open Source Community Guidelines](https://opensource.google/conduct/).
 
 ## Code contribution process
+
+### Get started
+
+The process for contributing code is as follows:
+
+1.  **Find an issue** that you want to work on.
+2.  **Fork the repository** and create a new branch.
+3.  **Make your changes** in the `packages/` directory.
+4.  **Ensure all checks pass** by running `npm run preflight`.
+5.  **Open a pull request** with your changes.
 
 ### Code reviews
 
@@ -117,7 +136,7 @@ standard for your commit messages.
 In the PR description, explain the "why" behind your changes and link to the
 relevant issue (e.g., `Fixes #123`).
 
-## Forking
+### Forking
 
 If you are forking the repository you will be able to run the Build, Test and
 Integration test workflows. However in order to make the integration tests run
@@ -131,12 +150,12 @@ Additionally you will need to click on the `Actions` tab and enable workflows
 for your repository, you'll find it's the large blue button in the center of the
 screen.
 
-## Development setup and workflow
+### Development setup and workflow
 
 This section guides contributors on how to build, modify, and understand the
 development setup of this project.
 
-### Setting up the development environment
+#### Setting up the development environment
 
 **Prerequisites:**
 
@@ -148,7 +167,7 @@ development setup of this project.
       version of Node.js `>=20` is acceptable.
 2.  **Git**
 
-### Build process
+#### Build process
 
 To clone the repository:
 
@@ -173,7 +192,7 @@ This command typically compiles TypeScript to JavaScript, bundles assets, and
 prepares the packages for execution. Refer to `scripts/build.js` and
 `package.json` scripts for more details on what happens during the build.
 
-### Enabling sandboxing
+#### Enabling sandboxing
 
 [Sandboxing](#sandboxing) is highly recommended and requires, at a minimum,
 setting `GEMINI_SANDBOX=true` in your `~/.env` and ensuring a sandboxing
@@ -259,7 +278,7 @@ fi
 " > .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 ```
 
-#### formatting
+#### Formatting
 
 To separately format the code in this project by running the following command
 from the root directory:
@@ -271,7 +290,7 @@ npm run format
 This command uses Prettier to format the code according to the project's style
 guidelines.
 
-#### linting
+#### Linting
 
 To separately lint the code in this project, run the following command from the
 root directory:
@@ -362,9 +381,9 @@ used for the CLI's interface, is compatible with React DevTools version 4.x.
     Your running CLI application should then connect to React DevTools.
     ![](/docs/assets/connected_devtools.png)
 
-## Sandboxing
+### Sandboxing
 
-### macOS Seatbelt
+#### macOS Seatbelt
 
 On macOS, `gemini` uses Seatbelt (`sandbox-exec`) under a `permissive-open`
 profile (see `packages/cli/src/utils/sandbox-macos-permissive-open.sb`) that
@@ -380,7 +399,7 @@ Available built-in profiles are `{permissive,restrictive}-{open,closed,proxied}`
 `.gemini/sandbox-macos-<profile>.sb` under your project settings directory
 `.gemini`.
 
-### Container-based Sandboxing (All Platforms)
+#### Container-based sandboxing (all platforms)
 
 For stronger container-based sandboxing on macOS or other platforms, you can set
 `GEMINI_SANDBOX=true|docker|podman|<command>` in your environment or `.env`
@@ -414,7 +433,7 @@ connections to `example.com:443` (e.g. `curl https://example.com`) and declines
 all other requests. The proxy is started and stopped automatically alongside the
 sandbox.
 
-## Manual publish
+### Manual publish
 
 We publish an artifact for each commit to our internal registry. But if you need
 to manually cut a local build, then run the following commands:
