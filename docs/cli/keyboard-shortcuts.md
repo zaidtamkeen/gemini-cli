@@ -1,26 +1,29 @@
 # Gemini CLI Keyboard Shortcuts
 
-This document lists the available keyboard shortcuts in the Gemini CLI.
+This document lists the available keyboard shortcuts within Gemini CLI.
 
 ## General
 
-| Shortcut | Description                                                                                                           |
-| -------- | --------------------------------------------------------------------------------------------------------------------- |
-| `Esc`    | Close dialogs and suggestions.                                                                                        |
-| `Ctrl+C` | Cancel the ongoing request and clear the input. Press twice to exit the application.                                  |
-| `Ctrl+D` | Exit the application if the input is empty. Press twice to confirm.                                                   |
-| `Ctrl+L` | Clear the screen.                                                                                                     |
-| `Ctrl+O` | Toggle the display of the debug console.                                                                              |
-| `Ctrl+S` | Allows long responses to print fully, disabling truncation. Use your terminal's scrollback to view the entire output. |
-| `Ctrl+T` | Toggle the display of the todo list.                                                                                  |
-| `Ctrl+Y` | Toggle auto-approval (YOLO mode) for all tool calls.                                                                  |
+| Shortcut    | Description                                                                                                           |
+| :---------- | :-------------------------------------------------------------------------------------------------------------------- |
+| `Esc`       | Close dialogs and suggestions.                                                                                        |
+| `Ctrl+C`    | Cancel the ongoing request and clear the input. Press twice to exit the application.                                  |
+| `Ctrl+D`    | Exit the application if the input is empty. Press twice to confirm.                                                   |
+| `Ctrl+L`    | Clear the screen.                                                                                                     |
+| `Ctrl+O`    | Toggle the display of the debug console.                                                                              |
+| `Ctrl+S`    | Allows long responses to print fully, disabling truncation. Use your terminal's scrollback to view the entire output. |
+| `Ctrl+T`    | Toggle the display of the todo list.                                                                                  |
+| `Ctrl+Y`    | Toggle auto-approval (YOLO mode) for all tool calls.                                                                  |
+| `Shift+Tab` | Toggle auto-accepting edits approval mode.                                                                            |
+| `Alt+M`     | Toggle Markdown rendering for messages. (Cmd+M on macOS)                                                              |
 
 ## Input Prompt
 
 | Shortcut                                           | Description                                                                                                                         |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| :------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
 | `!`                                                | Toggle shell mode when the input is empty.                                                                                          |
 | `\` (at end of line) + `Enter`                     | Insert a newline.                                                                                                                   |
+| `Shift+Enter`                                      | Insert a newline.                                                                                                                   |
 | `Down Arrow`                                       | Navigate down through the input history.                                                                                            |
 | `Enter`                                            | Submit the current prompt.                                                                                                          |
 | `Meta+Delete` / `Ctrl+Delete`                      | Delete the word to the right of the cursor.                                                                                         |
@@ -32,30 +35,35 @@ This document lists the available keyboard shortcuts in the Gemini CLI.
 | `Esc` (double press)                               | Clear the input prompt.                                                                                                             |
 | `Ctrl+D` / `Delete`                                | Delete the character to the right of the cursor.                                                                                    |
 | `Ctrl+E` / `End`                                   | Move the cursor to the end of the line.                                                                                             |
-| `Ctrl+F` / `Right Arrow`                           | Move the cursor one character to the right.                                                                                         |
+| `Ctrl+F` / `Right Arrow`                           | Move the cursor one character to the right. Also toggles focus between input and embedded shell if active.                          |
 | `Ctrl+H` / `Backspace`                             | Delete the character to the left of the cursor.                                                                                     |
 | `Ctrl+K`                                           | Delete from the cursor to the end of the line.                                                                                      |
 | `Ctrl+Left Arrow` / `Meta+Left Arrow` / `Meta+B`   | Move the cursor one word to the left.                                                                                               |
 | `Ctrl+N`                                           | Navigate down through the input history.                                                                                            |
 | `Ctrl+P`                                           | Navigate up through the input history.                                                                                              |
+| `Ctrl+R`                                           | Activate reverse command search history.                                                                                            |
 | `Ctrl+Right Arrow` / `Meta+Right Arrow` / `Meta+F` | Move the cursor one word to the right.                                                                                              |
 | `Ctrl+U`                                           | Delete from the cursor to the beginning of the line.                                                                                |
 | `Ctrl+V`                                           | Paste clipboard content. If the clipboard contains an image, it will be saved and a reference to it will be inserted in the prompt. |
 | `Ctrl+W` / `Meta+Backspace` / `Ctrl+Backspace`     | Delete the word to the left of the cursor.                                                                                          |
 | `Ctrl+X` / `Meta+Enter`                            | Open the current input in an external editor.                                                                                       |
+| `Ctrl+Z`                                           | Undo last text edit.                                                                                                                |
+| `Ctrl+Shift+Z`                                     | Redo last undone text edit.                                                                                                         |
 
 ## Suggestions
 
-| Shortcut        | Description                            |
-| --------------- | -------------------------------------- |
-| `Down Arrow`    | Navigate down through the suggestions. |
-| `Tab` / `Enter` | Accept the selected suggestion.        |
-| `Up Arrow`      | Navigate up through the suggestions.   |
+| Shortcut        | Description                                 |
+| :-------------- | :------------------------------------------ |
+| `Down Arrow`    | Navigate down through the suggestions.      |
+| `Tab` / `Enter` | Accept the selected suggestion.             |
+| `Up Arrow`      | Navigate up through the suggestions.        |
+| `Right Arrow`   | Expand the currently selected suggestion.   |
+| `Left Arrow`    | Collapse the currently selected suggestion. |
 
 ## Radio Button Select
 
 | Shortcut           | Description                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| :----------------- | :------------------------------------------------------------------------------------------------------------ |
 | `Down Arrow` / `j` | Move selection down.                                                                                          |
 | `Enter`            | Confirm selection.                                                                                            |
 | `Up Arrow` / `k`   | Move selection up.                                                                                            |
@@ -65,5 +73,5 @@ This document lists the available keyboard shortcuts in the Gemini CLI.
 ## IDE Integration
 
 | Shortcut | Description                       |
-| -------- | --------------------------------- |
+| :------- | :-------------------------------- |
 | `Ctrl+G` | See context CLI received from IDE |
