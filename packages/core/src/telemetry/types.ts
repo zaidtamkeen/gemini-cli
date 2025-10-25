@@ -1291,29 +1291,23 @@ export const EVENT_LLM_LOOP_CHECK = 'gemini_cli.llm_loop_check';
 export class LlmLoopCheckEvent implements BaseTelemetryEvent {
   'event.name': 'llm_loop_check';
   'event.timestamp': string;
-  model: string;
   prompt_id: string;
-  success: boolean;
-  confidence?: number;
-  reasoning?: string;
-  error?: string;
+  flash_confidence: number;
+  main_model: string;
+  main_model_confidence?: number;
 
   constructor(
-    model: string,
     prompt_id: string,
-    success: boolean,
-    confidence?: number,
-    reasoning?: string,
-    error?: string,
+    flash_confidence: number,
+    main_model: string,
+    main_model_confidence?: number,
   ) {
     this['event.name'] = 'llm_loop_check';
     this['event.timestamp'] = new Date().toISOString();
-    this.model = model;
     this.prompt_id = prompt_id;
-    this.success = success;
-    this.confidence = confidence;
-    this.reasoning = reasoning;
-    this.error = error;
+    this.flash_confidence = flash_confidence;
+    this.main_model = main_model;
+    this.main_model_confidence = main_model_confidence;
   }
 
   toOpenTelemetryAttributes(config: Config): LogAttributes {
@@ -1321,26 +1315,20 @@ export class LlmLoopCheckEvent implements BaseTelemetryEvent {
       ...getCommonAttributes(config),
       'event.name': EVENT_LLM_LOOP_CHECK,
       'event.timestamp': this['event.timestamp'],
-      model: this.model,
       prompt_id: this.prompt_id,
-      success: this.success,
+      flash_confidence: this.flash_confidence,
+      main_model: this.main_model,
     };
 
-    if (this.confidence !== undefined) {
-      attributes['confidence'] = this.confidence;
-    }
-    if (this.reasoning !== undefined) {
-      attributes['reasoning'] = this.reasoning;
-    }
-    if (this.error !== undefined) {
-      attributes['error'] = this.error;
+    if (this.main_model_confidence !== undefined) {
+      attributes['main_model_confidence'] = this.main_model_confidence;
     }
 
     return attributes;
   }
 
   toLogBody(): string {
-    return `LLM loop check. Model: ${this.model}. Success: ${this.success}. Confidence: ${this.confidence}`;
+    return `LLM loop check. Flash confidence: ${this.flash_confidence}. Main model (${this.main_model}) confidence: ${this.main_model_confidence ?? 'N/A'}`;
   }
 }
 

@@ -457,6 +457,16 @@ export class LoopDetectionService {
           signal,
         );
 
+        logLlmLoopCheck(
+          this.config,
+          new LlmLoopCheckEvent(
+            this.promptId,
+            flashResult['confidence'],
+            this.config.getModel(),
+            mainModelResult?.['confidence'] as number | undefined,
+          ),
+        );
+
         if (
           mainModelResult &&
           typeof mainModelResult['confidence'] === 'number'
@@ -483,7 +493,7 @@ export class LoopDetectionService {
     signal: AbortSignal,
   ): Promise<Record<string, unknown> | null> {
     try {
-      const result = (await this.config.getBaseLlmClient().generateJson({
+      return (await this.config.getBaseLlmClient().generateJson({
         contents,
         schema,
         model,
@@ -491,19 +501,6 @@ export class LoopDetectionService {
         abortSignal: signal,
         promptId: this.promptId,
       })) as Record<string, unknown>;
-
-      logLlmLoopCheck(
-        this.config,
-        new LlmLoopCheckEvent(
-          model,
-          this.promptId,
-          true,
-          result['confidence'] as number | undefined,
-          result['reasoning'] as string | undefined,
-        ),
-      );
-
-      return result;
     } catch (e) {
       this.config.getDebugMode() ? debugLogger.warn(e) : debugLogger.debug(e);
       return null;
