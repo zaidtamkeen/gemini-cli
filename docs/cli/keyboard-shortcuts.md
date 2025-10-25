@@ -15,7 +15,7 @@ This document lists the available keyboard shortcuts within Gemini CLI.
 | `Ctrl+T`    | Toggle the display of the todo list.                                                                                  |
 | `Ctrl+Y`    | Toggle auto-approval (YOLO mode) for all tool calls.                                                                  |
 | `Shift+Tab` | Toggle auto-accepting edits approval mode.                                                                            |
-| `Alt+M`     | Toggle Markdown rendering for messages. (Cmd+M on macOS)                                                              |
+| `Meta+M`    | Toggle Markdown rendering for messages.                                                                               |
 
 ## Input Prompt
 
@@ -23,7 +23,6 @@ This document lists the available keyboard shortcuts within Gemini CLI.
 | :------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
 | `!`                                                | Toggle shell mode when the input is empty.                                                                                          |
 | `\` (at end of line) + `Enter`                     | Insert a newline.                                                                                                                   |
-| `Shift+Enter`                                      | Insert a newline.                                                                                                                   |
 | `Down Arrow`                                       | Navigate down through the input history.                                                                                            |
 | `Enter`                                            | Submit the current prompt.                                                                                                          |
 | `Meta+Delete` / `Ctrl+Delete`                      | Delete the word to the right of the cursor.                                                                                         |
@@ -35,7 +34,7 @@ This document lists the available keyboard shortcuts within Gemini CLI.
 | `Esc` (double press)                               | Clear the input prompt.                                                                                                             |
 | `Ctrl+D` / `Delete`                                | Delete the character to the right of the cursor.                                                                                    |
 | `Ctrl+E` / `End`                                   | Move the cursor to the end of the line.                                                                                             |
-| `Ctrl+F` / `Right Arrow`                           | Move the cursor one character to the right. Also toggles focus between input and embedded shell if active.                          |
+| `Ctrl+F` / `Right Arrow`                           | Move the cursor one character to the right. Also toggles focus between input and interactive shell if active.                       |
 | `Ctrl+H` / `Backspace`                             | Delete the character to the left of the cursor.                                                                                     |
 | `Ctrl+K`                                           | Delete from the cursor to the end of the line.                                                                                      |
 | `Ctrl+Left Arrow` / `Meta+Left Arrow` / `Meta+B`   | Move the cursor one word to the left.                                                                                               |
