@@ -1294,13 +1294,13 @@ export class LlmLoopCheckEvent implements BaseTelemetryEvent {
   prompt_id: string;
   flash_confidence: number;
   main_model: string;
-  main_model_confidence?: number;
+  main_model_confidence: number;
 
   constructor(
     prompt_id: string,
     flash_confidence: number,
     main_model: string,
-    main_model_confidence?: number,
+    main_model_confidence: number,
   ) {
     this['event.name'] = 'llm_loop_check';
     this['event.timestamp'] = new Date().toISOString();
@@ -1311,24 +1311,19 @@ export class LlmLoopCheckEvent implements BaseTelemetryEvent {
   }
 
   toOpenTelemetryAttributes(config: Config): LogAttributes {
-    const attributes: LogAttributes = {
+    return {
       ...getCommonAttributes(config),
       'event.name': EVENT_LLM_LOOP_CHECK,
       'event.timestamp': this['event.timestamp'],
       prompt_id: this.prompt_id,
       flash_confidence: this.flash_confidence,
       main_model: this.main_model,
+      main_model_confidence: this.main_model_confidence,
     };
-
-    if (this.main_model_confidence !== undefined) {
-      attributes['main_model_confidence'] = this.main_model_confidence;
-    }
-
-    return attributes;
   }
 
   toLogBody(): string {
-    return `LLM loop check. Flash confidence: ${this.flash_confidence}. Main model (${this.main_model}) confidence: ${this.main_model_confidence ?? 'N/A'}`;
+    return `LLM loop check. Flash confidence: ${this.flash_confidence}. Main model (${this.main_model}) confidence: ${this.main_model_confidence}`;
   }
 }
 

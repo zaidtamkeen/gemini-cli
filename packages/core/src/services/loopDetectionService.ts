@@ -463,7 +463,7 @@ export class LoopDetectionService {
             this.promptId,
             flashResult['confidence'],
             this.config.getModel(),
-            mainModelResult?.['confidence'] as number | undefined,
+            (mainModelResult?.['confidence'] as number | undefined) ?? 0,
           ),
         );
 
