@@ -495,6 +495,7 @@ export class LoopDetectionService {
         systemInstruction: LOOP_DETECTION_SYSTEM_PROMPT,
         abortSignal: signal,
         promptId: this.promptId,
+        maxAttempts: 2,
       })) as Record<string, unknown>;
     } catch (e) {
       this.config.getDebugMode() ? debugLogger.warn(e) : debugLogger.debug(e);
