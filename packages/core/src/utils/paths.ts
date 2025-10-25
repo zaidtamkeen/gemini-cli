@@ -40,6 +40,53 @@ export function shortenPath(filePath: string, maxLen: number = 35): string {
     return filePath;
   }
 
+  const simpleTruncate = () => {
+    const keepLen = Math.floor((maxLen - 3) / 2);
+    if (keepLen <= 0) {
+      return filePath.substring(0, maxLen - 3) + '...';
+    }
+    const start = filePath.substring(0, keepLen);
+    const end = filePath.substring(filePath.length - keepLen);
+    return `${start}...${end}`;
+  };
+
+  type TruncateMode = 'start' | 'end' | 'center';
+
+  const truncateComponent = (
+    component: string,
+    targetLength: number,
+    mode: TruncateMode,
+  ): string => {
+    if (component.length <= targetLength) {
+      return component;
+    }
+
+    if (targetLength <= 0) {
+      return '';
+    }
+
+    if (targetLength <= 3) {
+      if (mode === 'end') {
+        return component.slice(-targetLength);
+      }
+      return component.slice(0, targetLength);
+    }
+
+    if (mode === 'start') {
+      return `${component.slice(0, targetLength - 3)}...`;
+    }
+
+    if (mode === 'end') {
+      return `...${component.slice(component.length - (targetLength - 3))}`;
+    }
+
+    const front = Math.ceil((targetLength - 3) / 2);
+    const back = targetLength - 3 - front;
+    return `${component.slice(0, front)}...${component.slice(
+      component.length - back,
+    )}`;
+  };
+
   const parsedPath = path.parse(filePath);
   const root = parsedPath.root;
   const separator = path.sep;
@@ -51,14 +98,7 @@ export function shortenPath(filePath: string, maxLen: number = 35): string {
   // Handle cases with no segments after root (e.g., "/", "C:\") or only one segment
   if (segments.length <= 1) {
     // Fall back to simple start/end truncation for very short paths or single segments
-    const keepLen = Math.floor((maxLen - 3) / 2);
-    // Ensure keepLen is not negative if maxLen is very small
-    if (keepLen <= 0) {
-      return filePath.substring(0, maxLen - 3) + '...';
-    }
-    const start = filePath.substring(0, keepLen);
-    const end = filePath.substring(filePath.length - keepLen);
-    return `${start}...${end}`;
+    return simpleTruncate();
   }
 
   const firstDir = segments[0];
@@ -88,9 +128,107 @@ export function shortenPath(filePath: string, maxLen: number = 35): string {
     }
   }
 
-  return `${startComponent}${separator}...${separator}${endPartSegments.join(
-    separator,
-  )}`;
+  const components = [firstDir, ...endPartSegments];
+  const componentModes: TruncateMode[] = components.map((_, index) => {
+    if (index === 0) {
+      return 'start';
+    }
+    if (index === components.length - 1) {
+      return 'end';
+    }
+    return 'center';
+  });
+
+  const separatorsCount = endPartSegments.length + 1;
+  const fixedLen = root.length + separatorsCount * separator.length + 3; // ellipsis length
+  const availableForComponents = maxLen - fixedLen;
+
+  const trailingFallback = () => {
+    const ellipsisTail = `...${separator}${lastSegment}`;
+    if (ellipsisTail.length <= maxLen) {
+      return ellipsisTail;
+    }
+
+    if (root) {
+      const rootEllipsisTail = `${root}...${separator}${lastSegment}`;
+      if (rootEllipsisTail.length <= maxLen) {
+        return rootEllipsisTail;
+      }
+    }
+
+    if (root && `${root}${lastSegment}`.length <= maxLen) {
+      return `${root}${lastSegment}`;
+    }
+
+    if (lastSegment.length <= maxLen) {
+      return lastSegment;
+    }
+
+    // As a final resort (e.g., last segment itself exceeds maxLen), fall back to simple truncation.
+    return simpleTruncate();
+  };
+
+  if (availableForComponents <= 0) {
+    return trailingFallback();
+  }
+
+  const minLengths = components.map((component, index) => {
+    if (index === 0) {
+      return Math.min(component.length, 1);
+    }
+    if (index === components.length - 1) {
+      return component.length; // Never truncate the last segment when possible.
+    }
+    return Math.min(component.length, 1);
+  });
+
+  const minTotal = minLengths.reduce((sum, len) => sum + len, 0);
+  if (availableForComponents < minTotal) {
+    return trailingFallback();
+  }
+
+  const budgets = components.map((component) => component.length);
+  let currentTotal = budgets.reduce((sum, len) => sum + len, 0);
+
+  const pickIndexToReduce = () => {
+    let bestIndex = -1;
+    let bestScore = -Infinity;
+    for (let i = 0; i < budgets.length; i++) {
+      if (budgets[i] <= minLengths[i]) {
+        continue;
+      }
+      const isLast = i === budgets.length - 1;
+      const score = (isLast ? 0 : 1_000_000) + budgets[i];
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
+  };
+
+  while (currentTotal > availableForComponents) {
+    const index = pickIndexToReduce();
+    if (index === -1) {
+      return trailingFallback();
+    }
+    budgets[index]--;
+    currentTotal--;
+  }
+
+  const truncatedComponents = components.map((component, index) =>
+    truncateComponent(component, budgets[index], componentModes[index]),
+  );
+
+  const truncatedFirst = truncatedComponents[0];
+  const truncatedEnd = truncatedComponents.slice(1).join(separator);
+  const result = `${root}${truncatedFirst}${separator}...${separator}${truncatedEnd}`;
+
+  if (result.length > maxLen) {
+    return trailingFallback();
+  }
+
+  return result;
 }
 
 /**

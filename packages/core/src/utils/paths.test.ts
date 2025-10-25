@@ -315,60 +315,103 @@ describe('shortenPath', () => {
         'a-very-long-filena...o-be-shortened.txt',
       );
     });
+
+    it('should fallback to truncating earlier segments while keeping the last intact', () => {
+      const p = '/abcdef/fghij.txt';
+      const result = shortenPath(p, 10);
+      expect(result).toBe('/fghij.txt');
+      expect(result.length).toBeLessThanOrEqual(10);
+    });
+
+    it('should fallback by truncating start and middle segments when needed', () => {
+      const p = '/averylongcomponentname/another/short.txt';
+      const result = shortenPath(p, 25);
+      expect(result).toBe('/averylo.../.../short.txt');
+      expect(result.length).toBeLessThanOrEqual(25);
+    });
+
+    it('should show only the last segment when maxLen is tiny', () => {
+      const p = '/foo/bar/baz.txt';
+      const result = shortenPath(p, 8);
+      expect(result).toBe('/baz.txt');
+      expect(result.length).toBeLessThanOrEqual(8);
+    });
+
+    it('should fall back to simple truncation when the last segment exceeds maxLen', () => {
+      const longFile = 'x'.repeat(60) + '.txt';
+      const p = `/really/long/${longFile}`;
+      const result = shortenPath(p, 50);
+      expect(result).toBe('/really/long/xxxxxxxxxx...xxxxxxxxxxxxxxxxxxx.txt');
+      expect(result.length).toBeLessThanOrEqual(50);
+    });
+
+    it('should handle relative paths without a root', () => {
+      const p = 'foo/bar/baz/qux.txt';
+      const result = shortenPath(p, 18);
+      expect(result).toBe('foo/.../qux.txt');
+      expect(result.length).toBeLessThanOrEqual(18);
+    });
+
+    it('should ignore empty segments created by repeated separators', () => {
+      const p = '/foo//bar///baz/verylongname.txt';
+      const result = shortenPath(p, 20);
+      expect(result).toBe('.../verylongname.txt');
+      expect(result.length).toBeLessThanOrEqual(20);
+    });
   });
 
   describe.skipIf(process.platform !== 'win32')('on Windows', () => {
     it('should not shorten a path that is shorter than maxLen', () => {
-      const p = 'C:\\Users\\Test\\file.txt';
+      const p = 'C\\Users\\Test\\file.txt';
       expect(shortenPath(p, 40)).toBe(p);
     });
 
     it('should not shorten a path that is equal to maxLen', () => {
-      const p = 'C:\\path\\to\\file.txt';
+      const p = 'C\\path\\to\\file.txt';
       expect(shortenPath(p, p.length)).toBe(p);
     });
 
     it('should shorten a long path, keeping start and end from a short limit', () => {
-      const p = 'C:\\path\\to\\a\\very\\long\\directory\\name\\file.txt';
-      expect(shortenPath(p, 30)).toBe('C:\\path\\...\\name\\file.txt');
+      const p = 'C\\path\\to\\a\\very\\long\\directory\\name\\file.txt';
+      expect(shortenPath(p, 30)).toBe('C\\path\\...\\name\\file.txt');
     });
 
     it('should shorten a long path, keeping more from the end from a longer limit', () => {
-      const p = 'C:\\path\\to\\a\\very\\long\\directory\\name\\file.txt';
+      const p = 'C\\path\\to\\a\\very\\long\\directory\\name\\file.txt';
       expect(shortenPath(p, 42)).toBe(
-        'C:\\path\\...\\long\\directory\\name\\file.txt',
+        'C\\path\\...\\long\\directory\\name\\file.txt',
       );
     });
 
     it('should handle deep paths where few segments from the end fit', () => {
       const p =
-        'C:\\a\\b\\c\\d\\e\\f\\g\\h\\i\\j\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt';
-      expect(shortenPath(p, 22)).toBe('C:\\a\\...\\y\\z\\file.txt');
+        'C\\a\\b\\c\\d\\e\\f\\g\\h\\i\\j\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt';
+      expect(shortenPath(p, 22)).toBe('C\\a\\...\\y\\z\\file.txt');
     });
 
     it('should handle deep paths where many segments from the end fit', () => {
       const p =
-        'C:\\a\\b\\c\\d\\e\\f\\g\\h\\i\\j\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt';
+        'C\\a\\b\\c\\d\\e\\f\\g\\h\\i\\j\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt';
       expect(shortenPath(p, 47)).toBe(
-        'C:\\a\\...\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt',
+        'C\\a\\...\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt',
       );
     });
 
     it('should handle a long filename in the root when it needs shortening', () => {
-      const p = 'C:\\a-very-long-filename-that-needs-to-be-shortened.txt';
+      const p = 'C\\a-very-long-filename-that-needs-to-be-shortened.txt';
       expect(shortenPath(p, 40)).toBe(
-        'C:\\a-very-long-fil...o-be-shortened.txt',
+        'C\\a-very-long-fil...o-be-shortened.txt',
       );
     });
 
     it('should handle root path', () => {
-      const p = 'C:\\';
-      expect(shortenPath(p, 10)).toBe('C:\\');
+      const p = 'C\\';
+      expect(shortenPath(p, 10)).toBe('C\\');
     });
 
     it('should handle a path with one long segment after root', () => {
-      const p = 'C:\\a-very-long-directory-name';
-      expect(shortenPath(p, 22)).toBe('C:\\a-very...tory-name');
+      const p = 'C\\a-very-long-directory-name';
+      expect(shortenPath(p, 22)).toBe('C\\a-very...tory-name');
     });
 
     it('should handle a path with just a long filename (no root)', () => {
@@ -376,6 +419,56 @@ describe('shortenPath', () => {
       expect(shortenPath(p, 40)).toBe(
         'a-very-long-filena...o-be-shortened.txt',
       );
+    });
+
+    it('should fallback to truncating earlier segments while keeping the last intact', () => {
+      const p = 'C\\abcdef\\fghij.txt';
+      const result = shortenPath(p, 15);
+      expect(result).toBe('C\\...\\fghij.txt');
+      expect(result.length).toBeLessThanOrEqual(15);
+    });
+
+    it('should fallback by truncating start and middle segments when needed', () => {
+      const p = 'C\\averylongcomponentname\\another\\short.txt';
+      const result = shortenPath(p, 30);
+      expect(result).toBe('C\\...\\another\\short.txt');
+      expect(result.length).toBeLessThanOrEqual(30);
+    });
+
+    it('should show only the last segment for tiny maxLen values', () => {
+      const p = 'C\\foo\\bar\\baz.txt';
+      const result = shortenPath(p, 12);
+      expect(result).toBe('...\\baz.txt');
+      expect(result.length).toBeLessThanOrEqual(12);
+    });
+
+    it('should keep the drive prefix when space allows', () => {
+      const p = 'C\\foo\\bar\\baz.txt';
+      const result = shortenPath(p, 14);
+      expect(result).toBe('C\\...\\baz.txt');
+      expect(result.length).toBeLessThanOrEqual(14);
+    });
+
+    it('should fall back when the last segment exceeds maxLen on Windows', () => {
+      const longFile = 'x'.repeat(60) + '.txt';
+      const p = `C\\really\\long\\${longFile}`;
+      const result = shortenPath(p, 40);
+      expect(result).toBe('C\\really\\long\\xxxx...xxxxxxxxxxxxxx.txt');
+      expect(result.length).toBeLessThanOrEqual(40);
+    });
+
+    it('should handle UNC paths with limited space', () => {
+      const p = '\\server\\share\\deep\\path\\file.txt';
+      const result = shortenPath(p, 25);
+      expect(result).toBe('\\server\\...\\path\\file.txt');
+      expect(result.length).toBeLessThanOrEqual(25);
+    });
+
+    it('should collapse UNC paths further when maxLen shrinks', () => {
+      const p = '\\server\\share\\deep\\path\\file.txt';
+      const result = shortenPath(p, 18);
+      expect(result).toBe('\\s...\\...\\file.txt');
+      expect(result.length).toBeLessThanOrEqual(18);
     });
   });
 });
