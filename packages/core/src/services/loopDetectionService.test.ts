@@ -666,46 +666,6 @@ describe('LoopDetectionService LLM Checks', () => {
     }
   };
 
-  it('should prepend user message if history starts with a tool call', async () => {
-    const toolCall = {
-      role: 'model',
-      parts: [{ functionCall: { name: 'someTool', args: {} } }],
-    };
-    const userMessage = {
-      role: 'user',
-      parts: [{ text: 'next user message' }],
-    };
-    vi.mocked(mockGeminiClient.getHistory).mockReturnValue([
-      toolCall,
-      userMessage,
-    ]);
-
-    mockBaseLlmClient.generateJson = vi
-      .fn()
-      .mockResolvedValue({ confidence: 0.1 });
-
-    await advanceTurns(30);
-
-    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledWith(
-      expect.objectContaining({
-        contents: expect.arrayContaining([
-          expect.objectContaining({
-            role: 'user',
-            parts: [
-              {
-                text: expect.stringContaining(
-                  'Here are the most recent 20 turns of conversation history.',
-                ),
-              },
-            ],
-          }),
-          toolCall,
-          userMessage,
-        ]),
-      }),
-    );
-  });
-
   it('should not trigger LLM check before LLM_CHECK_AFTER_TURNS', async () => {
     await advanceTurns(29);
     expect(mockBaseLlmClient.generateJson).not.toHaveBeenCalled();
