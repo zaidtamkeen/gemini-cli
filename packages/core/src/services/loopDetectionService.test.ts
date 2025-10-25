@@ -674,7 +674,7 @@ describe('LoopDetectionService LLM Checks', () => {
   it('should trigger LLM check on the 30th turn', async () => {
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValue({ confidence: 0.1 });
+      .mockResolvedValue({ unproductive_state_confidence: 0.1 });
     await advanceTurns(30);
     expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(1);
     expect(mockBaseLlmClient.generateJson).toHaveBeenCalledWith(
@@ -688,24 +688,30 @@ describe('LoopDetectionService LLM Checks', () => {
     );
   });
 
-  it('should detect a cognitive loop when both models have high confidence', async () => {
+  it('should detect a cognitive loop when both models have high unproductive_state_confidence', async () => {
     // First check at turn 30
     mockBaseLlmClient.generateJson = vi.fn().mockResolvedValueOnce({
-      confidence: 0.85,
-      reasoning: 'Repetitive actions',
-    }); // Flash (first check, low confidence)
+      unproductive_state_confidence: 0.85,
+      unproductive_state_analysis: 'Repetitive actions',
+    }); // Flash (first check, low unproductive_state_confidence)
     await advanceTurns(30);
     expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(1);
 
-    // The confidence of 0.85 will result in a low interval.
+    // The unproductive_state_confidence of 0.85 will result in a low interval.
     // The interval will be: 5 + (15 - 5) * (1 - 0.85) = 5 + 10 * 0.15 = 6.5 -> rounded to 7
     await advanceTurns(6); // advance to turn 36
 
-    // Second check at turn 37: Flash is high confidence, triggers main model check
+    // Second check at turn 37: Flash is high unproductive_state_confidence, triggers main model check
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValueOnce({ confidence: 0.95, reasoning: 'Flash says loop' }) // Flash
-      .mockResolvedValueOnce({ confidence: 0.92, reasoning: 'Pro says loop' }); // Pro
+      .mockResolvedValueOnce({
+        unproductive_state_confidence: 0.95,
+        unproductive_state_analysis: 'Flash says loop',
+      }) // Flash
+      .mockResolvedValueOnce({
+        unproductive_state_confidence: 0.92,
+        unproductive_state_analysis: 'Pro says loop',
+      }); // Pro
 
     const finalResult = await service.turnStarted(abortController.signal); // This is turn 37
 
@@ -732,7 +738,10 @@ describe('LoopDetectionService LLM Checks', () => {
     vi.mocked(mockConfig.getModel).mockReturnValue(DEFAULT_GEMINI_FLASH_MODEL);
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValue({ confidence: 0.95, reasoning: 'Loop detected' });
+      .mockResolvedValue({
+        unproductive_state_confidence: 0.95,
+        unproductive_state_analysis: 'Loop detected',
+      });
 
     await advanceTurns(30);
 
@@ -746,13 +755,16 @@ describe('LoopDetectionService LLM Checks', () => {
     );
   });
 
-  it('should not detect a loop if the second model disagrees with high confidence', async () => {
+  it('should not detect a loop if the second model disagrees with high unproductive_state_confidence', async () => {
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValueOnce({ confidence: 0.95, reasoning: 'Flash says loop' }) // Flash
       .mockResolvedValueOnce({
-        confidence: 0.5,
-        reasoning: 'Pro says no loop',
+        unproductive_state_confidence: 0.95,
+        unproductive_state_analysis: 'Flash says loop',
+      }) // Flash
+      .mockResolvedValueOnce({
+        unproductive_state_confidence: 0.5,
+        unproductive_state_analysis: 'Pro says no loop',
       }); // Pro
 
     await advanceTurns(30);
@@ -763,16 +775,16 @@ describe('LoopDetectionService LLM Checks', () => {
     expect(loggers.logLoopDetected).not.toHaveBeenCalled();
   });
 
-  it('should update interval based on second model confidence if it disagrees', async () => {
+  it('should update interval based on second model unproductive_state_confidence if it disagrees', async () => {
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValueOnce({ confidence: 0.95 }) // Flash (would set interval to ~5)
-      .mockResolvedValueOnce({ confidence: 0.1 }); // Pro (should set interval to ~14)
+      .mockResolvedValueOnce({ unproductive_state_confidence: 0.95 }) // Flash (would set interval to ~5)
+      .mockResolvedValueOnce({ unproductive_state_confidence: 0.1 }); // Pro (should set interval to ~14)
 
     await advanceTurns(30);
     await service.turnStarted(abortController.signal); // Turn 31, triggers checks
 
-    // Interval should be based on 0.1 confidence: 5 + (15-5)*(1-0.1) = 5 + 10*0.9 = 14
+    // Interval should be based on 0.1 unproductive_state_confidence: 5 + (15-5)*(1-0.1) = 5 + 10*0.9 = 14
     await advanceTurns(12); // Advance to turn 43 (31 + 12 = 43). 43 - 30 = 13 < 14.
     expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(2); // Still only the initial 2 calls
 
@@ -780,21 +792,24 @@ describe('LoopDetectionService LLM Checks', () => {
     expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(3);
   });
 
-  it('should not detect a loop when confidence is low', async () => {
+  it('should not detect a loop when unproductive_state_confidence is low', async () => {
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValue({ confidence: 0.5, reasoning: 'Looks okay' });
+      .mockResolvedValue({
+        unproductive_state_confidence: 0.5,
+        unproductive_state_analysis: 'Looks okay',
+      });
     await advanceTurns(30);
     const result = await service.turnStarted(abortController.signal);
     expect(result).toBe(false);
     expect(loggers.logLoopDetected).not.toHaveBeenCalled();
   });
 
-  it('should adjust the check interval based on confidence', async () => {
-    // Confidence is 0.0, so interval should be MAX_LLM_CHECK_INTERVAL (15)
+  it('should adjust the check interval based on unproductive_state_confidence', async () => {
+    // unproductive_state_confidence is 0.0, so interval should be MAX_LLM_CHECK_INTERVAL (15)
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValue({ confidence: 0.0 });
+      .mockResolvedValue({ unproductive_state_confidence: 0.0 });
     await advanceTurns(30); // First check at turn 30
     expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(1);
 
@@ -818,7 +833,7 @@ describe('LoopDetectionService LLM Checks', () => {
   it('should handle errors from the second model gracefully', async () => {
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValueOnce({ confidence: 0.95 }) // Flash succeeds
+      .mockResolvedValueOnce({ unproductive_state_confidence: 0.95 }) // Flash succeeds
       .mockRejectedValueOnce(new Error('API error')); // Pro fails
 
     await advanceTurns(30);
@@ -853,7 +868,7 @@ describe('LoopDetectionService LLM Checks', () => {
 
     mockBaseLlmClient.generateJson = vi
       .fn()
-      .mockResolvedValue({ confidence: 0.1 });
+      .mockResolvedValue({ unproductive_state_confidence: 0.1 });
 
     await advanceTurns(30);
 
