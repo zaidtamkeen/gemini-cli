@@ -1797,12 +1797,13 @@ describe('GeminiChat', () => {
       expect(lastMessage.parts?.[0].text).toBe('This is a partial message.');
     });
 
-    it.skip('should save partial response even when stream ends without a finish reason', async () => {
+    it('should save partial response even when stream ends without a finish reason', async () => {
       // 1. Setup a mock stream that ends prematurely (no finishReason)
-      const mockApiStream = createMockStream(['This ', 'is another ', 'test.']);
       vi.mocked(
         mockConfig.getContentGenerator().generateContentStream,
-      ).mockResolvedValue(mockApiStream);
+      ).mockImplementation(async () =>
+        createMockStream(['This ', 'is another ', 'test.']),
+      );
 
       // 2. Call sendMessageStream and process it
       const streamPromise = chat.sendMessageStream(
