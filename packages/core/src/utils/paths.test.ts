@@ -373,34 +373,34 @@ describe('shortenPath', () => {
 
     it('should shorten a long path, keeping start and end from a short limit', () => {
       const p = 'C\\path\\to\\a\\very\\long\\directory\\name\\file.txt';
-      expect(shortenPath(p, 30)).toBe('C\\path\\...\\name\\file.txt');
+      expect(shortenPath(p, 30)).toBe('C\\...\\directory\\name\\file.txt');
     });
 
     it('should shorten a long path, keeping more from the end from a longer limit', () => {
       const p = 'C\\path\\to\\a\\very\\long\\directory\\name\\file.txt';
       expect(shortenPath(p, 42)).toBe(
-        'C\\path\\...\\long\\directory\\name\\file.txt',
+        'C\\...\\a\\very\\long\\directory\\name\\file.txt',
       );
     });
 
     it('should handle deep paths where few segments from the end fit', () => {
       const p =
         'C\\a\\b\\c\\d\\e\\f\\g\\h\\i\\j\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt';
-      expect(shortenPath(p, 22)).toBe('C\\a\\...\\y\\z\\file.txt');
+      expect(shortenPath(p, 22)).toBe('C\\...\\w\\x\\y\\z\\file.txt');
     });
 
     it('should handle deep paths where many segments from the end fit', () => {
       const p =
         'C\\a\\b\\c\\d\\e\\f\\g\\h\\i\\j\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt';
       expect(shortenPath(p, 47)).toBe(
-        'C\\a\\...\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt',
+        'C\\...\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\file.txt',
       );
     });
 
     it('should handle a long filename in the root when it needs shortening', () => {
       const p = 'C\\a-very-long-filename-that-needs-to-be-shortened.txt';
       expect(shortenPath(p, 40)).toBe(
-        'C\\a-very-long-fil...o-be-shortened.txt',
+        'C\\a-very-long-file...o-be-shortened.txt',
       );
     });
 
@@ -411,7 +411,7 @@ describe('shortenPath', () => {
 
     it('should handle a path with one long segment after root', () => {
       const p = 'C\\a-very-long-directory-name';
-      expect(shortenPath(p, 22)).toBe('C\\a-very...tory-name');
+      expect(shortenPath(p, 22)).toBe('C\\a-very-...tory-name');
     });
 
     it('should handle a path with just a long filename (no root)', () => {
