@@ -1323,7 +1323,7 @@ export class LlmLoopCheckEvent implements BaseTelemetryEvent {
   }
 
   toLogBody(): string {
-    return `LLM loop check. Flash confidence: ${this.flash_confidence}. Main model (${this.main_model}) confidence: ${this.main_model_confidence}`;
+    return `LLM loop check. Flash confidence: ${this.flash_confidence.toFixed(2)}. Main model (${this.main_model}) confidence: ${this.main_model_confidence.toFixed(2)}`;
   }
 }
 
