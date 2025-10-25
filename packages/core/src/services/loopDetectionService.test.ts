@@ -648,7 +648,7 @@ describe('LoopDetectionService LLM Checks', () => {
       getBaseLlmClient: () => mockBaseLlmClient,
       getDebugMode: () => false,
       getTelemetryEnabled: () => true,
-      getModel: () => 'gemini-1.5-pro',
+      getModel: vi.fn().mockReturnValue('gemini-1.5-pro'),
     } as unknown as Config;
 
     service = new LoopDetectionService(mockConfig);
@@ -719,6 +719,24 @@ describe('LoopDetectionService LLM Checks', () => {
       2,
       expect.objectContaining({ model: 'gemini-1.5-pro' }),
     );
+    expect(loggers.logLoopDetected).toHaveBeenCalledWith(
+      mockConfig,
+      expect.objectContaining({
+        'event.name': 'loop_detected',
+        loop_type: LoopType.LLM_DETECTED_LOOP,
+      }),
+    );
+  });
+
+  it('should skip second check if configured model is Flash', async () => {
+    vi.mocked(mockConfig.getModel).mockReturnValue(DEFAULT_GEMINI_FLASH_MODEL);
+    mockBaseLlmClient.generateJson = vi
+      .fn()
+      .mockResolvedValue({ confidence: 0.95, reasoning: 'Loop detected' });
+
+    await advanceTurns(30);
+
+    expect(mockBaseLlmClient.generateJson).toHaveBeenCalledTimes(1);
     expect(loggers.logLoopDetected).toHaveBeenCalledWith(
       mockConfig,
       expect.objectContaining({

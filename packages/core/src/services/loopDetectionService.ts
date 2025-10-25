@@ -438,9 +438,15 @@ export class LoopDetectionService {
 
     if (flashResult && typeof flashResult['confidence'] === 'number') {
       if (flashResult['confidence'] > 0.9) {
+        const mainModel = this.config.getModel();
+        if (mainModel === DEFAULT_GEMINI_FLASH_MODEL) {
+          this.handleConfirmedLoop(flashResult);
+          return true;
+        }
+
         // Double check with configured model
         const mainModelResult = await this.queryLoopDetectionModel(
-          this.config.getModel(),
+          mainModel,
           contents,
           schema,
           signal,
