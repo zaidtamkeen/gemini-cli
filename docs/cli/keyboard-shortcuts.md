@@ -34,7 +34,7 @@ This document lists the available keyboard shortcuts within Gemini CLI.
 | `Esc` (double press)                               | Clear the input prompt.                                                                                                             |
 | `Ctrl+D` / `Delete`                                | Delete the character to the right of the cursor.                                                                                    |
 | `Ctrl+E` / `End`                                   | Move the cursor to the end of the line.                                                                                             |
-| `Ctrl+F` / `Right Arrow`                           | Move the cursor one character to the right. Also toggles focus between input and interactive shell if active.                       |
+| `Ctrl+F` / `Right Arrow`                           | Move the cursor one character to the right. `Ctrl+F` also toggles focus between input and interactive shell if active.                       |
 | `Ctrl+H` / `Backspace`                             | Delete the character to the left of the cursor.                                                                                     |
 | `Ctrl+K`                                           | Delete from the cursor to the end of the line.                                                                                      |
 | `Ctrl+Left Arrow` / `Meta+Left Arrow` / `Meta+B`   | Move the cursor one word to the left.                                                                                               |
