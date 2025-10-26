@@ -484,6 +484,15 @@ export class LoopDetectionService {
           }
         }
       } else {
+        logLlmLoopCheck(
+          this.config,
+          new LlmLoopCheckEvent(
+            this.promptId,
+            flashResult['unproductive_state_probability'],
+            this.config.getModel(),
+            -1,
+          ),
+        );
         this.updateCheckInterval(flashResult['unproductive_state_probability']);
       }
     }
