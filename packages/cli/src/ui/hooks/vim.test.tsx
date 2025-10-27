@@ -1606,9 +1606,11 @@ describe('useVim hook', () => {
           selectionAnchor: null,
         });
 
-        const action: TextBufferAction = count
-          ? { type: actionType, payload: { count } }
-          : { type: actionType };
+        const action = (
+          count
+            ? { type: actionType, payload: { count } }
+            : { type: actionType }
+        ) as TextBufferAction;
 
         const result = textBufferReducer(initialState, action);
 
