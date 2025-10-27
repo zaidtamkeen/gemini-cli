@@ -190,6 +190,9 @@ describe('runNonInteractive', () => {
     }
   }
 
+  const getWrittenOutput = () =>
+    processStdoutSpy.mock.calls.map((c) => c[0]).join('');
+
   it('should process input and write text output', async () => {
     const events: ServerGeminiStreamEvent[] = [
       { type: GeminiEventType.Content, value: 'Hello' },
@@ -215,9 +218,7 @@ describe('runNonInteractive', () => {
       expect.any(AbortSignal),
       'prompt-id-1',
     );
-    expect(processStdoutSpy).toHaveBeenCalledWith('Hello');
-    expect(processStdoutSpy).toHaveBeenCalledWith(' World');
-    expect(processStdoutSpy).toHaveBeenCalledWith('\n');
+    expect(getWrittenOutput()).toBe('Hello World\n');
     expect(mockShutdownTelemetry).toHaveBeenCalled();
   });
 
@@ -285,8 +286,7 @@ describe('runNonInteractive', () => {
       expect.any(AbortSignal),
       'prompt-id-2',
     );
-    expect(processStdoutSpy).toHaveBeenCalledWith('Final answer');
-    expect(processStdoutSpy).toHaveBeenCalledWith('\n');
+    expect(getWrittenOutput()).toBe('Final answer\n');
   });
 
   it('should write a single newline between sequential text outputs from the model', async () => {
@@ -353,12 +353,7 @@ describe('runNonInteractive', () => {
     // 5. Verify the output.
     // The rendered output should contain the text from each turn, separated by a
     // single newline, with a final newline at the end.
-    const renderedOutput = processStdoutSpy.mock.calls
-      .map((call) => call[0])
-      .join('');
-    expect(renderedOutput).toBe(
-      'Use mock tool\nUse mock tool again\nFinished.\n',
-    );
+    expect(getWrittenOutput()).toMatchSnapshot();
 
     // Also verify the tools were called as expected.
     expect(mockCoreExecuteToolCall).toHaveBeenCalledTimes(2);
@@ -444,7 +439,7 @@ describe('runNonInteractive', () => {
       expect.any(AbortSignal),
       'prompt-id-3',
     );
-    expect(processStdoutSpy).toHaveBeenCalledWith('Sorry, let me try again.');
+    expect(getWrittenOutput()).toBe('Sorry, let me try again.\n');
   });
 
   it('should exit with error if sendMessageStream throws initially', async () => {
@@ -519,9 +514,7 @@ describe('runNonInteractive', () => {
       'Error executing tool nonexistentTool: Tool "nonexistentTool" not found in registry.',
     );
     expect(mockGeminiClient.sendMessageStream).toHaveBeenCalledTimes(2);
-    expect(processStdoutSpy).toHaveBeenCalledWith(
-      "Sorry, I can't find that tool.",
-    );
+    expect(getWrittenOutput()).toBe("Sorry, I can't find that tool.\n");
   });
 
   it('should exit when max session turns are exceeded', async () => {
@@ -581,7 +574,7 @@ describe('runNonInteractive', () => {
     );
 
     // 6. Assert the final output is correct
-    expect(processStdoutSpy).toHaveBeenCalledWith('Summary complete.');
+    expect(getWrittenOutput()).toBe('Summary complete.\n');
   });
 
   it('should process input and write JSON output with stats', async () => {
@@ -925,7 +918,7 @@ describe('runNonInteractive', () => {
       'prompt-id-slash',
     );
 
-    expect(processStdoutSpy).toHaveBeenCalledWith('Response from command');
+    expect(getWrittenOutput()).toBe('Response from command\n');
   });
 
   it('should throw FatalInputError if a command requires confirmation', async () => {
@@ -980,7 +973,7 @@ describe('runNonInteractive', () => {
       'prompt-id-unknown',
     );
 
-    expect(processStdoutSpy).toHaveBeenCalledWith('Response to unknown');
+    expect(getWrittenOutput()).toBe('Response to unknown\n');
   });
 
   it('should throw for unhandled command result types', async () => {
@@ -1037,7 +1030,7 @@ describe('runNonInteractive', () => {
 
     expect(mockAction).toHaveBeenCalledWith(expect.any(Object), 'arg1 arg2');
 
-    expect(processStdoutSpy).toHaveBeenCalledWith('Acknowledged');
+    expect(getWrittenOutput()).toBe('Acknowledged\n');
   });
 
   it('should instantiate CommandService with correct loaders for slash commands', async () => {
@@ -1148,7 +1141,7 @@ describe('runNonInteractive', () => {
       expect.objectContaining({ name: 'ShellTool' }),
       expect.any(AbortSignal),
     );
-    expect(processStdoutSpy).toHaveBeenCalledWith('file.txt');
+    expect(getWrittenOutput()).toBe('file.txt\n');
   });
 
   describe('CoreEvents Integration', () => {

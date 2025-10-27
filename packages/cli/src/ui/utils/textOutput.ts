@@ -4,14 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Internal state for the singleton
-let lastChar = '\n';
-
 /**
- * A singleton utility to manage writing text to stdout, ensuring that newlines
+ * A utility to manage writing text to stdout, ensuring that newlines
  * are handled consistently and robustly across the application.
  */
-export const textOutput = {
+
+import stripAnsi from 'strip-ansi';
+
+export class TextOutput {
+  private atStartOfLine = true;
+
   /**
    * Writes a string to stdout.
    * @param str The string to write.
@@ -21,29 +23,32 @@ export const textOutput = {
       return;
     }
     process.stdout.write(str);
-    lastChar = str.charAt(str.length - 1);
-  },
+    const strippedStr = stripAnsi(str);
+    if (strippedStr.length > 0) {
+      this.atStartOfLine = strippedStr.endsWith('\n');
+    }
+  }
 
   /**
    * Writes a string to stdout, ensuring it starts on a new line.
    * If the previous output did not end with a newline, one will be added.
    * This prevents adding extra blank lines if a newline already exists.
-   * If no string is provided, it just ensures the output ends with a newline.
-   * @param str The optional string to write.
+   * @param str The string to write.
    */
-  writeOnNewLine(str?: string): void {
-    if (lastChar !== '\n') {
+  writeOnNewLine(str: string): void {
+    if (!this.atStartOfLine) {
       this.write('\n');
     }
-    if (str !== undefined) {
-      this.write(str);
-    }
-  },
+    this.write(str);
+  }
 
   /**
-   * FOR TESTING ONLY. Resets the internal state of the controller.
+   * Ensures that the output ends with a newline. If the last character
+   * written was not a newline, one will be added.
    */
-  _resetForTesting(): void {
-    lastChar = '\n';
-  },
-};
+  ensureTrailingNewline(): void {
+    if (!this.atStartOfLine) {
+      this.write('\n');
+    }
+  }
+}

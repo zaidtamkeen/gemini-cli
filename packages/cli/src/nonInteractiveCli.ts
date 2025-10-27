@@ -40,7 +40,7 @@ import {
   handleCancellationError,
   handleMaxTurnsExceededError,
 } from './utils/errors.js';
-import { textOutput } from './ui/utils/textOutput.js';
+import { TextOutput } from './ui/utils/textOutput.js';
 
 export async function runNonInteractive(
   config: Config,
@@ -53,6 +53,7 @@ export async function runNonInteractive(
       stderr: true,
       debugMode: config.getDebugMode(),
     });
+    const textOutput = new TextOutput();
 
     const handleUserFeedback = (payload: UserFeedbackPayload) => {
       const prefix = payload.severity.toUpperCase();
@@ -223,7 +224,7 @@ export async function runNonInteractive(
         }
 
         if (toolCallRequests.length > 0) {
-          textOutput.writeOnNewLine();
+          textOutput.ensureTrailingNewline();
           const toolResponseParts: Part[] = [];
           const completedToolCalls: CompletedToolCall[] = [];
 
@@ -303,7 +304,7 @@ export async function runNonInteractive(
             const stats = uiTelemetryService.getMetrics();
             textOutput.write(formatter.format(responseText, stats));
           } else {
-            textOutput.writeOnNewLine(); // Ensure a final newline
+            textOutput.ensureTrailingNewline(); // Ensure a final newline
           }
           return;
         }
