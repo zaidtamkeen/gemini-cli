@@ -14,6 +14,7 @@ import type { Key } from './useKeypress.js';
 import type {
   TextBuffer,
   TextBufferState,
+  TextBufferAction,
 } from '../components/shared/text-buffer.js';
 import { textBufferReducer } from '../components/shared/text-buffer.js';
 
@@ -1355,7 +1356,31 @@ describe('useVim hook', () => {
   // Line operations (dd, cc) are tested in text-buffer.test.ts
 
   describe('Reducer-based integration tests', () => {
-    it.each([
+    type VimActionType =
+      | 'vim_delete_word_end'
+      | 'vim_delete_word_backward'
+      | 'vim_change_word_forward'
+      | 'vim_change_word_end'
+      | 'vim_change_word_backward'
+      | 'vim_change_line'
+      | 'vim_delete_line'
+      | 'vim_delete_to_end_of_line'
+      | 'vim_change_to_end_of_line';
+
+    type VimReducerTestCase = {
+      command: string;
+      desc: string;
+      lines: string[];
+      cursorRow: number;
+      cursorCol: number;
+      actionType: VimActionType;
+      count?: number;
+      expectedLines: string[];
+      expectedCursorRow: number;
+      expectedCursorCol: number;
+    };
+
+    const testCases: VimReducerTestCase[] = [
       {
         command: 'de',
         desc: 'delete from cursor to end of current word',
@@ -1519,7 +1544,6 @@ describe('useVim hook', () => {
         cursorRow: 0,
         cursorCol: 6,
         actionType: 'vim_delete_to_end_of_line' as const,
-        count: undefined,
         expectedLines: ['hello '],
         expectedCursorRow: 0,
         expectedCursorCol: 6,
@@ -1531,7 +1555,6 @@ describe('useVim hook', () => {
         cursorRow: 0,
         cursorCol: 11,
         actionType: 'vim_delete_to_end_of_line' as const,
-        count: undefined,
         expectedLines: ['hello world'],
         expectedCursorRow: 0,
         expectedCursorCol: 11,
@@ -1543,7 +1566,6 @@ describe('useVim hook', () => {
         cursorRow: 0,
         cursorCol: 6,
         actionType: 'vim_change_to_end_of_line' as const,
-        count: undefined,
         expectedLines: ['hello '],
         expectedCursorRow: 0,
         expectedCursorCol: 6,
@@ -1555,12 +1577,13 @@ describe('useVim hook', () => {
         cursorRow: 0,
         cursorCol: 0,
         actionType: 'vim_change_to_end_of_line' as const,
-        count: undefined,
         expectedLines: [''],
         expectedCursorRow: 0,
         expectedCursorCol: 0,
       },
-    ])(
+    ];
+
+    it.each(testCases)(
       '$command: should $desc',
       ({
         lines,
@@ -1571,7 +1594,7 @@ describe('useVim hook', () => {
         expectedLines,
         expectedCursorRow,
         expectedCursorCol,
-      }) => {
+      }: VimReducerTestCase) => {
         const initialState = createMockTextBufferState({
           lines,
           cursorRow,
@@ -1583,10 +1606,9 @@ describe('useVim hook', () => {
           selectionAnchor: null,
         });
 
-        const action =
-          count !== undefined
-            ? { type: actionType, payload: { count } }
-            : { type: actionType };
+        const action: TextBufferAction = count
+          ? { type: actionType, payload: { count } }
+          : { type: actionType };
 
         const result = textBufferReducer(initialState, action);
 
