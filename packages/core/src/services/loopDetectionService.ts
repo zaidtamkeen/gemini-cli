@@ -420,7 +420,7 @@ export class LoopDetectionService {
           description:
             'Your reasoning on if the conversation is looping without forward progress.',
         },
-        unproductive_state_probability: {
+        unproductive_state_confidence: {
           type: 'number',
           description:
             'A number between 0.0 and 1.0 representing your probability that the conversation is in an unproductive state.',
@@ -428,7 +428,7 @@ export class LoopDetectionService {
       },
       required: [
         'unproductive_state_analysis',
-        'unproductive_state_probability',
+        'unproductive_state_confidence',
       ],
     };
 
@@ -441,9 +441,9 @@ export class LoopDetectionService {
 
     if (
       flashResult &&
-      typeof flashResult['unproductive_state_probability'] === 'number'
+      typeof flashResult['unproductive_state_confidence'] === 'number'
     ) {
-      if (flashResult['unproductive_state_probability'] > 0.9) {
+      if (flashResult['unproductive_state_confidence'] > 0.9) {
         const mainModel = this.config.getModel();
         if (mainModel === DEFAULT_GEMINI_FLASH_MODEL) {
           this.handleConfirmedLoop(flashResult);
@@ -462,9 +462,9 @@ export class LoopDetectionService {
           this.config,
           new LlmLoopCheckEvent(
             this.promptId,
-            flashResult['unproductive_state_probability'],
+            flashResult['unproductive_state_confidence'],
             this.config.getModel(),
-            (mainModelResult?.['unproductive_state_probability'] as
+            (mainModelResult?.['unproductive_state_confidence'] as
               | number
               | undefined) ?? 0,
           ),
@@ -472,14 +472,14 @@ export class LoopDetectionService {
 
         if (
           mainModelResult &&
-          typeof mainModelResult['unproductive_state_probability'] === 'number'
+          typeof mainModelResult['unproductive_state_confidence'] === 'number'
         ) {
-          if (mainModelResult['unproductive_state_probability'] > 0.9) {
+          if (mainModelResult['unproductive_state_confidence'] > 0.9) {
             this.handleConfirmedLoop(mainModelResult);
             return true;
           } else {
             this.updateCheckInterval(
-              mainModelResult['unproductive_state_probability'],
+              mainModelResult['unproductive_state_confidence'],
             );
           }
         }
@@ -488,12 +488,12 @@ export class LoopDetectionService {
           this.config,
           new LlmLoopCheckEvent(
             this.promptId,
-            flashResult['unproductive_state_probability'],
+            flashResult['unproductive_state_confidence'],
             this.config.getModel(),
             -1,
           ),
         );
-        this.updateCheckInterval(flashResult['unproductive_state_probability']);
+        this.updateCheckInterval(flashResult['unproductive_state_confidence']);
       }
     }
 
@@ -535,11 +535,11 @@ export class LoopDetectionService {
     );
   }
 
-  private updateCheckInterval(unproductive_state_probability: number): void {
+  private updateCheckInterval(unproductive_state_confidence: number): void {
     this.llmCheckInterval = Math.round(
       MIN_LLM_CHECK_INTERVAL +
         (MAX_LLM_CHECK_INTERVAL - MIN_LLM_CHECK_INTERVAL) *
-          (1 - unproductive_state_probability),
+          (1 - unproductive_state_confidence),
     );
   }
 
