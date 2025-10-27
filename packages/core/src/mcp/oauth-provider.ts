@@ -62,7 +62,7 @@ export interface OAuthClientRegistrationRequest {
   response_types: string[];
   token_endpoint_auth_method: string;
   code_challenge_method?: string[];
-  scope?: string;
+  scope?: string | string[];
 }
 
 /**
@@ -630,7 +630,10 @@ export class MCPOAuthProvider {
                 ...config,
                 authorizationUrl: discoveredConfig.authorizationUrl,
                 tokenUrl: discoveredConfig.tokenUrl,
-                scopes: discoveredConfig.scopes || config.scopes || [],
+                scopes:
+                  config.scopes && config.scopes.length > 0
+                    ? config.scopes
+                    : discoveredConfig.scopes || [],
                 // Preserve existing client credentials
                 clientId: config.clientId,
                 clientSecret: config.clientSecret,
@@ -654,7 +657,10 @@ export class MCPOAuthProvider {
             ...config,
             authorizationUrl: discoveredConfig.authorizationUrl,
             tokenUrl: discoveredConfig.tokenUrl,
-            scopes: discoveredConfig.scopes || config.scopes || [],
+            scopes:
+              config.scopes && config.scopes.length > 0
+                ? config.scopes
+                : discoveredConfig.scopes || [],
             registrationUrl: discoveredConfig.registrationUrl,
             // Preserve existing client credentials
             clientId: config.clientId,
@@ -667,7 +673,6 @@ export class MCPOAuthProvider {
         }
       }
     }
-
     // If no client ID is provided, try dynamic client registration
     if (!config.clientId) {
       let registrationUrl = config.registrationUrl;
