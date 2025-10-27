@@ -10,7 +10,6 @@ import type {
   ToolCallConfirmationDetails,
   ToolResult,
   ToolResultDisplay,
-  ToolRegistry,
   EditorType,
   Config,
   ToolConfirmationPayload,
@@ -22,13 +21,12 @@ import {
   ToolConfirmationOutcome,
   ApprovalMode,
   logToolCall,
-  ReadFileTool,
   ToolErrorType,
   ToolCallEvent,
-  ShellTool,
   logToolOutputTruncated,
   ToolOutputTruncatedEvent,
 } from '../index.js';
+import { READ_FILE_TOOL_NAME, SHELL_TOOL_NAME } from '../tools/tool-names.js';
 import type { Part, PartListUnion } from '@google/genai';
 import { getResponseTextFromParts } from '../utils/generateContentResponseUtilities.js';
 import type { ModifyContext } from '../tools/modifiable-tool.js';
@@ -39,11 +37,16 @@ import {
 import * as Diff from 'diff';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import {
+  isShellInvocationAllowlisted,
+  SHELL_TOOL_NAMES,
+} from '../utils/shell-utils.js';
 import { doesToolInvocationMatch } from '../utils/tool-utils.js';
 import levenshtein from 'fast-levenshtein';
 import { ShellToolInvocation } from '../tools/shell.js';
 import type { ToolConfirmationRequest } from '../confirmation-bus/types.js';
 import { MessageBusType } from '../confirmation-bus/types.js';
+import type { MessageBus } from '../confirmation-bus/message-bus.js';
 
 export type ValidatingToolCall = {
   status: 'validating';
@@ -301,10 +304,10 @@ export async function truncateAndSaveToFile(
     return {
       content: `Tool output was too large and has been truncated.
 The full output has been saved to: ${outputFile}
-To read the complete output, use the ${ReadFileTool.Name} tool with the absolute file path above. For large files, you can use the offset and limit parameters to read specific sections:
-- ${ReadFileTool.Name} tool with offset=0, limit=100 to see the first 100 lines
-- ${ReadFileTool.Name} tool with offset=N to skip N lines from the beginning
-- ${ReadFileTool.Name} tool with limit=M to read only M lines at a time
+To read the complete output, use the ${READ_FILE_TOOL_NAME} tool with the absolute file path above. For large files, you can use the offset and limit parameters to read specific sections:
+- ${READ_FILE_TOOL_NAME} tool with offset=0, limit=100 to see the first 100 lines
+- ${READ_FILE_TOOL_NAME} tool with offset=N to skip N lines from the beginning
+- ${READ_FILE_TOOL_NAME} tool with limit=M to read only M lines at a time
 The truncated output below shows the beginning and end of the content. The marker '... [CONTENT TRUNCATED] ...' indicates where content was removed.
 This allows you to efficiently examine different parts of the output without loading the entire file.
 Truncated part of the output:
@@ -329,7 +332,13 @@ interface CoreToolSchedulerOptions {
 }
 
 export class CoreToolScheduler {
-  private toolRegistry: ToolRegistry;
+  // Static WeakMap to track which MessageBus instances already have a handler subscribed
+  // This prevents duplicate subscriptions when multiple CoreToolScheduler instances are created
+  private static subscribedMessageBuses = new WeakMap<
+    MessageBus,
+    (request: ToolConfirmationRequest) => void
+  >();
+
   private toolCalls: ToolCall[] = [];
   private outputUpdateHandler?: OutputUpdateHandler;
   private onAllToolCallsComplete?: AllToolCallsCompleteHandler;
@@ -348,7 +357,6 @@ export class CoreToolScheduler {
 
   constructor(options: CoreToolSchedulerOptions) {
     this.config = options.config;
-    this.toolRegistry = options.config.getToolRegistry();
     this.outputUpdateHandler = options.outputUpdateHandler;
     this.onAllToolCallsComplete = options.onAllToolCallsComplete;
     this.onToolCallsUpdate = options.onToolCallsUpdate;
@@ -356,12 +364,34 @@ export class CoreToolScheduler {
     this.onEditorClose = options.onEditorClose;
 
     // Subscribe to message bus for ASK_USER policy decisions
+    // Use a static WeakMap to ensure we only subscribe ONCE per MessageBus instance
+    // This prevents memory leaks when multiple CoreToolScheduler instances are created
+    // (e.g., on every React render, or for each non-interactive tool call)
     if (this.config.getEnableMessageBusIntegration()) {
       const messageBus = this.config.getMessageBus();
-      messageBus.subscribe(
-        MessageBusType.TOOL_CONFIRMATION_REQUEST,
-        this.handleToolConfirmationRequest.bind(this),
-      );
+
+      // Check if we've already subscribed a handler to this message bus
+      if (!CoreToolScheduler.subscribedMessageBuses.has(messageBus)) {
+        // Create a shared handler that will be used for this message bus
+        const sharedHandler = (request: ToolConfirmationRequest) => {
+          // When ASK_USER policy decision is made, respond with requiresUserConfirmation=true
+          // to tell tools to use their legacy confirmation flow
+          messageBus.publish({
+            type: MessageBusType.TOOL_CONFIRMATION_RESPONSE,
+            correlationId: request.correlationId,
+            confirmed: false,
+            requiresUserConfirmation: true,
+          });
+        };
+
+        messageBus.subscribe(
+          MessageBusType.TOOL_CONFIRMATION_REQUEST,
+          sharedHandler,
+        );
+
+        // Store the handler in the WeakMap so we don't subscribe again
+        CoreToolScheduler.subscribedMessageBuses.set(messageBus, sharedHandler);
+      }
     }
   }
 
@@ -600,7 +630,7 @@ export class CoreToolScheduler {
    * @returns A suggestion string like " Did you mean 'tool'?" or " Did you mean one of: 'tool1', 'tool2'?", or an empty string if no suggestions are found.
    */
   private getToolSuggestion(unknownToolName: string, topN = 3): string {
-    const allToolNames = this.toolRegistry.getAllToolNames();
+    const allToolNames = this.config.getToolRegistry().getAllToolNames();
 
     const matches = allToolNames.map((toolName) => ({
       name: toolName,
@@ -677,7 +707,9 @@ export class CoreToolScheduler {
 
       const newToolCalls: ToolCall[] = requestsToProcess.map(
         (reqInfo): ToolCall => {
-          const toolInstance = this.toolRegistry.getTool(reqInfo.name);
+          const toolInstance = this.config
+            .getToolRegistry()
+            .getTool(reqInfo.name);
           if (!toolInstance) {
             const suggestion = this.getToolSuggestion(reqInfo.name);
             const errorMessage = `Tool "${reqInfo.name}" not found in registry. Tools must use the exact names that are registered.${suggestion}`;
@@ -729,7 +761,8 @@ export class CoreToolScheduler {
           continue;
         }
 
-        const { request: reqInfo, invocation } = toolCall;
+        const validatingCall = toolCall as ValidatingToolCall;
+        const { request: reqInfo, invocation } = validatingCall;
 
         try {
           if (signal.aborted) {
@@ -753,11 +786,7 @@ export class CoreToolScheduler {
             continue;
           }
 
-          const allowedTools = this.config.getAllowedTools() || [];
-          if (
-            this.config.getApprovalMode() === ApprovalMode.YOLO ||
-            doesToolInvocationMatch(toolCall.tool, invocation, allowedTools)
-          ) {
+          if (this.isAutoApproved(validatingCall)) {
             this.setToolCallOutcome(
               reqInfo.callId,
               ToolConfirmationOutcome.ProceedAlways,
@@ -1038,7 +1067,7 @@ export class CoreToolScheduler {
               typeof content === 'string' ? content.length : undefined;
             if (
               typeof content === 'string' &&
-              toolName === ShellTool.Name &&
+              toolName === SHELL_TOOL_NAME &&
               this.config.getEnableToolOutputTruncation() &&
               this.config.getTruncateToolOutputThreshold() > 0 &&
               this.config.getTruncateToolOutputLines() > 0
@@ -1171,24 +1200,20 @@ export class CoreToolScheduler {
     });
   }
 
-  /**
-   * Handle tool confirmation requests from the message bus when policy decision is ASK_USER.
-   * This publishes a response with requiresUserConfirmation=true to signal the tool
-   * that it should fall back to its legacy confirmation UI.
-   */
-  private handleToolConfirmationRequest(
-    request: ToolConfirmationRequest,
-  ): void {
-    // When ASK_USER policy decision is made, the message bus emits the request here.
-    // We respond with requiresUserConfirmation=true to tell the tool to use its
-    // legacy confirmation flow (which will show diffs, URLs, etc in the UI).
-    const messageBus = this.config.getMessageBus();
-    messageBus.publish({
-      type: MessageBusType.TOOL_CONFIRMATION_RESPONSE,
-      correlationId: request.correlationId,
-      confirmed: false, // Not auto-approved
-      requiresUserConfirmation: true, // Use legacy UI confirmation
-    });
+  private isAutoApproved(toolCall: ValidatingToolCall): boolean {
+    if (this.config.getApprovalMode() === ApprovalMode.YOLO) {
+      return true;
+    }
+
+    const allowedTools = this.config.getAllowedTools() || [];
+    const { tool, invocation } = toolCall;
+    const toolName = typeof tool === 'string' ? tool : tool.name;
+
+    if (SHELL_TOOL_NAMES.includes(toolName)) {
+      return isShellInvocationAllowlisted(invocation, allowedTools);
+    }
+
+    return doesToolInvocationMatch(tool, invocation, allowedTools);
   }
 
   private async autoApproveCompatiblePendingTools(

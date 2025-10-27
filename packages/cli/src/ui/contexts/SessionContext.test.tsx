@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** @vitest-environment jsdom */
+
 import { type MutableRefObject } from 'react';
 import { render } from 'ink-testing-library';
 import { renderHook } from '@testing-library/react';
@@ -84,6 +86,7 @@ describe('SessionStatsContext', () => {
           accept: 1,
           reject: 0,
           modify: 0,
+          auto_accept: 0,
         },
         byName: {
           'test-tool': {
@@ -95,9 +98,14 @@ describe('SessionStatsContext', () => {
               accept: 1,
               reject: 0,
               modify: 0,
+              auto_accept: 0,
             },
           },
         },
+      },
+      files: {
+        totalLinesAdded: 0,
+        totalLinesRemoved: 0,
       },
     };
 
@@ -152,8 +160,12 @@ describe('SessionStatsContext', () => {
         totalSuccess: 0,
         totalFail: 0,
         totalDurationMs: 0,
-        totalDecisions: { accept: 0, reject: 0, modify: 0 },
+        totalDecisions: { accept: 0, reject: 0, modify: 0, auto_accept: 0 },
         byName: {},
+      },
+      files: {
+        totalLinesAdded: 0,
+        totalLinesRemoved: 0,
       },
     };
 
